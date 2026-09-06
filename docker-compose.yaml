@@ -1,0 +1,108 @@
+
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  risk-provider:
+    build: ./risk_provider
+    environment:
+      LATENCY_MS: "50"
+      FAIL: "false"
+    ports:
+      - "6000:6000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:6000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  profiling:
+    build: ./profiling
+    environment:
+      INSTANCE_ID: profiling-1
+      REDIS_URL: redis://redis:6379/0
+      HEALTH_CHANNEL: health-heartbeat
+      RISK_PROVIDER_URL: http://risk-provider:6000
+      RISK_PROVIDER_TIMEOUT_SECONDS: "0.7"
+    ports:
+      - "7500:7500"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7500/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    depends_on:
+      redis:
+        condition: service_healthy
+      risk-provider:
+        condition: service_healthy
+
+  quoting-a:
+    build: ./quoting
+    environment:
+      INSTANCE_ID: quoting-a
+      REDIS_URL: redis://redis:6379/0
+      HEALTH_CHANNEL: health-heartbeat
+      PROFILING_URL: http://profiling:7500
+    ports:
+      - "7000:7000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    depends_on:
+      redis:
+        condition: service_healthy
+      profiling:
+        condition: service_healthy
+
+  quoting-b:
+    build: ./quoting
+    environment:
+      INSTANCE_ID: quoting-b
+      REDIS_URL: redis://redis:6379/0
+      HEALTH_CHANNEL: health-heartbeat
+      PROFILING_URL: http://profiling:7500
+    ports:
+      - "7001:7000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    depends_on:
+      redis:
+        condition: service_healthy
+      profiling:
+        condition: service_healthy
+
+  gateway:
+    build: ./gateway
+    environment:
+      POOL_NAME: quoting
+      BACKENDS: quoting-a=http://quoting-a:7000,quoting-b=http://quoting-b:7000
+      REDIS_URL: redis://redis:6379/0
+      HEALTH_CHANNEL: health-heartbeat
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      quoting-a:
+        condition: service_healthy
+      quoting-b:
+        condition: service_healthy
