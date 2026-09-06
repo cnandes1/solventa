@@ -1,0 +1,31 @@
+{
+  "name": "Solventa (experimento EDA)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "docker compose up --build -d && docker compose ps",
+  "forwardPorts": [8080, 7500, 7000, 7001, 6000],
+  "portsAttributes": {
+    "8080": {
+      "label": "Gateway (pool quoting)",
+      "onAutoForward": "notify"
+    },
+    "7500": {
+      "label": "Profiling",
+      "onAutoForward": "notify"
+    },
+    "7000": {
+      "label": "Quoting A",
+      "onAutoForward": "silent"
+    },
+    "7001": {
+      "label": "Quoting B",
+      "onAutoForward": "silent"
+    },
+    "6000": {
+      "label": "Risk provider (mock)",
+      "onAutoForward": "silent"
+    }
+  }
+}
