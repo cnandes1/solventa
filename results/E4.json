@@ -1,0 +1,33 @@
+{
+  "scenario": "E4",
+  "hypothesis": "H1: recuperación e idempotencia de eventos",
+  "executedAt": "2026-09-07T01:03:27.163792+00:00",
+  "target_version": 7,
+  "quoting_a_version": 7,
+  "quoting_b_version": 7,
+  "metrics": {
+    "decision_applied": 12,
+    "events_acked": 12,
+    "events_consumed": 12,
+    "pending_claimed": 3,
+    "pending_created_for_experiment": 3,
+    "pending_recovered": 3,
+    "quotes_degraded_success": 2087,
+    "quotes_normal_success": 1604,
+    "quotes_success": 3691,
+    "repository": {
+      "decisions": {
+        "APPLIED": 15
+      },
+      "profiles": 3
+    },
+    "runtime": {
+      "businessBusAvailable": true,
+      "materializerPaused": false,
+      "profilingAvailable": true
+    },
+    "sync_calls_quoting_to_profiling": 1,
+    "sync_quote_failures": 1
+  },
+  "accepted": true
+}

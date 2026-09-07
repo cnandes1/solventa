@@ -1,0 +1,17 @@
+{
+  "scenario": "E0",
+  "hypothesis": "Baseline cuantitativo",
+  "executedAt": "2026-09-07T00:54:29.345443+00:00",
+  "total_requests": 3207,
+  "successful_requests": 3207,
+  "failed_requests": 0,
+  "availability": 100.0,
+  "throughput": 533.68,
+  "p50": 14.27,
+  "p95": 23.31,
+  "p99": 29.67,
+  "categories": {
+    "SUCCESS": 3207
+  },
+  "accepted": true
+}

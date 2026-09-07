@@ -1,0 +1,22 @@
+{
+  "scenario": "E1",
+  "hypothesis": "ASR-02: fallback ante Open Finance DOWN",
+  "executedAt": "2026-09-07T01:14:45.974826+00:00",
+  "total_requests": 3983,
+  "successful_requests": 3983,
+  "failed_requests": 0,
+  "availability": 100.0,
+  "throughput": 663.02,
+  "p50": 11.68,
+  "p95": 16.82,
+  "p99": 20.76,
+  "categories": {
+    "SUCCESS": 3983
+  },
+  "profiling_metrics_delta": {
+    "http_errors": 3,
+    "fallback_count": 4
+  },
+  "circuit_state_during_failure": "OPEN",
+  "accepted": true
+}

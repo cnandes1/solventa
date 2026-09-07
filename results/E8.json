@@ -1,0 +1,41 @@
+{
+  "scenario": "E8",
+  "hypothesis": "H4: timeout decide con respuesta ausente",
+  "executedAt": "2026-09-07T01:07:00.341106+00:00",
+  "http_status": 200,
+  "duration_ms": 1022.6,
+  "vote": {
+    "consensusStrategies": [
+      "A",
+      "B"
+    ],
+    "correlationId": "99a1fe55-4bec-487b-8643-9b991f539c87",
+    "decision": "CONSENSUS",
+    "discrepancyDetected": false,
+    "durationMs": 1004.3,
+    "errorStrategies": [],
+    "finalScore": 40.0,
+    "missingStrategies": [
+      "C"
+    ],
+    "outlierStrategies": [],
+    "responsesReceived": 2,
+    "timeout": true,
+    "voteIncomplete": true,
+    "votes": [
+      {
+        "error": null,
+        "score": 40.0,
+        "status": "SUCCESS",
+        "strategy_id": "A"
+      },
+      {
+        "error": null,
+        "score": 40.0,
+        "status": "SUCCESS",
+        "strategy_id": "B"
+      }
+    ]
+  },
+  "accepted": true
+}
