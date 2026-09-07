@@ -1,17 +1,17 @@
 {
   "scenario": "E2",
   "hypothesis": "ASR-02: timeout ante Open Finance lento",
-  "executedAt": "2026-09-07T01:15:00.179757+00:00",
-  "total_requests": 4312,
-  "successful_requests": 4312,
+  "executedAt": "2026-09-07T02:37:49.351317+00:00",
+  "total_requests": 5132,
+  "successful_requests": 5132,
   "failed_requests": 0,
   "availability": 100.0,
-  "throughput": 717.88,
-  "p50": 10.79,
-  "p95": 16.14,
-  "p99": 18.78,
+  "throughput": 854.56,
+  "p50": 9.06,
+  "p95": 13.32,
+  "p99": 16.17,
   "categories": {
-    "SUCCESS": 4312
+    "SUCCESS": 5132
   },
   "profiling_metrics_delta": {
     "timeouts": 3,

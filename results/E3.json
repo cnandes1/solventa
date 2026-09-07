@@ -1,17 +1,17 @@
 {
   "scenario": "E3",
   "hypothesis": "H1: Cotización usa estado local con Perfilamiento DOWN",
-  "executedAt": "2026-09-07T00:55:44.109180+00:00",
-  "total_requests": 4175,
-  "successful_requests": 4175,
+  "executedAt": "2026-09-07T02:39:18.465119+00:00",
+  "total_requests": 4379,
+  "successful_requests": 4379,
   "failed_requests": 0,
   "availability": 100.0,
-  "throughput": 694.55,
-  "p50": 10.91,
-  "p95": 16.95,
-  "p99": 24.88,
+  "throughput": 729.0,
+  "p50": 10.38,
+  "p95": 16.3,
+  "p99": 22.27,
   "categories": {
-    "DEGRADED_SUCCESS": 4175
+    "DEGRADED_SUCCESS": 4379
   },
   "sync_baseline_failed": true,
   "accepted": true

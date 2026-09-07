@@ -1,7 +1,7 @@
 {
   "scenario": "E6",
   "hypothesis": "H3: reintegro DOWN-SHADOW-ACTIVE",
-  "executedAt": "2026-09-07T01:04:40.481925+00:00",
+  "executedAt": "2026-09-07T02:46:17.538193+00:00",
   "seen_shadow": true,
   "final_state": "ACTIVE",
   "accepted": true

@@ -1,11 +1,11 @@
 scenario,total_requests,successful_requests,failed_requests,availability,throughput,p50,p95,p99,hypothesis,accepted
-E0,3207,3207,0,100.0,533.68,14.27,23.31,29.67,Baseline cuantitativo,True
-E1,3983,3983,0,100.0,663.02,11.68,16.82,20.76,ASR-02: fallback ante Open Finance DOWN,True
-E2,4312,4312,0,100.0,717.88,10.79,16.14,18.78,ASR-02: timeout ante Open Finance lento,True
-E3,4175,4175,0,100.0,694.55,10.91,16.95,24.88,H1: Cotización usa estado local con Perfilamiento DOWN,True
+E0,4665,4665,0,100.0,776.73,9.87,14.73,19.26,Baseline cuantitativo,True
+E1,4644,4644,0,100.0,772.2,9.97,14.92,18.26,ASR-02: fallback ante Open Finance DOWN,True
+E2,5132,5132,0,100.0,854.56,9.06,13.32,16.17,ASR-02: timeout ante Open Finance lento,True
+E3,4379,4379,0,100.0,729.0,10.38,16.3,22.27,H1: Cotización usa estado local con Perfilamiento DOWN,True
 E4,,,,,,,,,H1: recuperación e idempotencia de eventos,True
-E5,4949,4949,0,100.0,618.12,12.47,18.61,23.35,"H2: detección, retiro y failover de réplica",True
+E5,5960,5960,0,100.0,744.4,10.13,16.31,21.98,"H2: detección, retiro y failover de réplica",True
 E6,,,,,,,,,H3: reintegro DOWN-SHADOW-ACTIVE,True
 E7,,,,,,,,,H4: consenso excluye outlier,True
 E8,,,,,,,,,H4: timeout decide con respuesta ausente,True
-E9,3531,3531,0,100.0,587.17,13.12,19.59,25.38,H1: vista local sobrevive a Redis Business DOWN,True
+E9,4429,4429,0,100.0,737.39,10.21,15.94,25.14,H1: vista local sobrevive a Redis Business DOWN,True

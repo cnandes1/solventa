@@ -1,17 +1,17 @@
 {
   "scenario": "E9",
   "hypothesis": "H1: vista local sobrevive a Redis Business DOWN",
-  "executedAt": "2026-09-07T01:08:07.593115+00:00",
-  "total_requests": 3531,
-  "successful_requests": 3531,
+  "executedAt": "2026-09-07T02:50:17.077363+00:00",
+  "total_requests": 4429,
+  "successful_requests": 4429,
   "failed_requests": 0,
   "availability": 100.0,
-  "throughput": 587.17,
-  "p50": 13.12,
-  "p95": 19.59,
-  "p99": 25.38,
+  "throughput": 737.39,
+  "p50": 10.21,
+  "p95": 15.94,
+  "p99": 25.14,
   "categories": {
-    "DEGRADED_SUCCESS": 3531
+    "DEGRADED_SUCCESS": 4429
   },
   "accepted": true
 }

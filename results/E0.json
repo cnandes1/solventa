@@ -1,17 +1,17 @@
 {
   "scenario": "E0",
   "hypothesis": "Baseline cuantitativo",
-  "executedAt": "2026-09-07T00:54:29.345443+00:00",
-  "total_requests": 3207,
-  "successful_requests": 3207,
+  "executedAt": "2026-09-07T02:33:36.220438+00:00",
+  "total_requests": 4665,
+  "successful_requests": 4665,
   "failed_requests": 0,
   "availability": 100.0,
-  "throughput": 533.68,
-  "p50": 14.27,
-  "p95": 23.31,
-  "p99": 29.67,
+  "throughput": 776.73,
+  "p50": 9.87,
+  "p95": 14.73,
+  "p99": 19.26,
   "categories": {
-    "SUCCESS": 3207
+    "SUCCESS": 4665
   },
   "accepted": true
 }

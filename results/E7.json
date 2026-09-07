@@ -1,17 +1,17 @@
 {
   "scenario": "E7",
   "hypothesis": "H4: consenso excluye outlier",
-  "executedAt": "2026-09-07T01:05:25.452922+00:00",
+  "executedAt": "2026-09-07T02:47:40.791144+00:00",
   "http_status": 200,
   "vote": {
     "consensusStrategies": [
       "A",
       "B"
     ],
-    "correlationId": "7683c2b0-9718-4681-908c-796454acf277",
+    "correlationId": "0d7907f8-b47f-4afa-98ab-70e12b3d1106",
     "decision": "CONSENSUS",
     "discrepancyDetected": true,
-    "durationMs": 3.2,
+    "durationMs": 4.2,
     "errorStrategies": [],
     "finalScore": 40.0,
     "missingStrategies": [],

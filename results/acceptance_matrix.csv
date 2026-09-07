@@ -3,9 +3,9 @@ Baseline cuantitativo,E0,availability,100% para perfiles precargados,availabilit
 ASR-02: fallback ante Open Finance DOWN,E1,availability + circuit + fallback,"100%, circuito OPEN y fallback >= 3","availability=100.0%, circuit=OPEN, fallback=4",PASS
 ASR-02: timeout ante Open Finance lento,E2,availability + timeout,"100%, circuito OPEN y timeouts >= 3","availability=100.0%, circuit=OPEN, timeouts=3",PASS
 H1: Cotización usa estado local con Perfilamiento DOWN,E3,availability + sync baseline,100% EDA y falla del baseline síncrono,"availability=100.0%, syncFailed=True",PASS
-H1: recuperación e idempotencia de eventos,E4,pending recovery,pendientes recuperados y misma versión A/B,"A=v7, B=v7, recovered=3",PASS
+H1: recuperación e idempotencia de eventos,E4,pending recovery,pendientes recuperados y misma versión A/B,"A=v16, B=v16, recovered=3",PASS
 "H2: detección, retiro y failover de réplica",E5,availability + routing,100% y Quoting B en DOWN,"availability=100.0%, B=DOWN",PASS
 H3: reintegro DOWN-SHADOW-ACTIVE,E6,state transitions,SHADOW observado antes de ACTIVE,"shadow=True, final=ACTIVE",PASS
 H4: consenso excluye outlier,E7,voting outlier,resultado 40 y C marcado como outlier,"score=40.0, outliers=['C']",PASS
-H4: timeout decide con respuesta ausente,E8,voting timeout,"resultado 40, C ausente y duración < 2.5 s","score=40.0, missing=['C'], duration=1022.6ms",PASS
+H4: timeout decide con respuesta ausente,E8,voting timeout,"resultado 40, C ausente y duración < 2.5 s","score=40.0, missing=['C'], duration=1023.4ms",PASS
 H1: vista local sobrevive a Redis Business DOWN,E9,availability,100% desde SQLite con Redis Business DOWN,availability=100.0%,PASS
