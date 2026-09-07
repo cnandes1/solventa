@@ -1,57 +1,93 @@
-# Solventa Availability Experiment
+# Solventa: experimento de disponibilidad y resiliencia
 
-Experimento reproducible para evaluar si transferencia de estado, vistas materializadas locales y detección asíncrona de fallas sostienen el journey de Cotización bajo las condiciones definidas para ASR-02 y ASR-05.
+Este repositorio contiene un experimento reproducible sobre la arquitectura de Solventa. La documentación utiliza los nombres del dominio para facilitar la explicación:
+
+- **Cotización**: servicio que genera y consulta cotizaciones. En el código se identifica como `quoting`.
+- **Perfilamiento**: servicio que calcula y actualiza el perfil de riesgo. En el código se identifica como `profiling`.
+- **API Gateway**: punto de entrada, enrutamiento y monitoreo de las réplicas de Cotización.
+- **Bus de Eventos de Negocio**: Redis Streams con AOF para transportar eventos de negocio.
+- **Bus de Control / Salud**: Redis Pub/Sub para `HealthPing` y `HealthEcho`.
+- **Vista Materializada del Perfil**: copia local del último perfil válido en SQLite de cada réplica de Cotización.
+
+Los nombres técnicos (`quoting-a`, `quoting-b`, `profiling`, nombres de streams y rutas HTTP) se conservan en comandos y contratos para que la explicación pueda comprobarse directamente en el código.
 
 El resultado de una ejecución representa evidencia dentro del entorno evaluado. No equivale a una predicción de disponibilidad mensual en producción.
 
-## Hipótesis
+## Hipótesis específica del experimento
 
-- H1, transferencia de estado: un `ProfileUpdated` durable permite cotizar desde SQLite local cuando Profiling está temporalmente indisponible.
-- H2, detección: Ping-Echo por el plano de control retira una réplica que no responde dentro de la ventana configurada.
-- H3, reintegro: una réplica recuperada pasa por `DOWN -> SHADOW -> ACTIVE` antes de recibir tráfico autoritativo.
-- H4, votación: A/B/C publican resultados correlacionados y el Validator decide por consenso o timeout sin mezclar ejecuciones.
+### Hipótesis principal
 
-## Arquitectura
+**Si el perfil válido de un cliente se transfiere previamente mediante el Bus de Eventos de Negocio y se materializa en SQLite local en cada réplica de Cotización, entonces el journey de Cotización conservará su disponibilidad durante fallas temporales de Perfilamiento, Open Finance, el bus de negocio o una réplica de Cotización, sin depender de una llamada HTTP síncrona para cada cotización.**
+
+La variable que modificamos es la falla introducida: proveedor externo caído o lento, Perfilamiento detenido, materializador pausado, réplica caída, estrategia de votación incompleta o Bus de Eventos de Negocio indisponible.
+
+La variable que medimos es el comportamiento del journey: disponibilidad, categoría de resultado, latencia, uso de caché, estado del Circuit Breaker, recuperación de pendientes, consistencia de versiones, estado de las réplicas y decisión de votación.
+
+### Hipótesis nula
+
+**Si Cotización depende síncronamente de Perfilamiento, la caída de Perfilamiento u Open Finance hará que las cotizaciones fallen o que la latencia crezca sin control.**
+
+La línea base síncrona se conserva en `GET /sync/quotes/{customerId}` únicamente para contrastarla con el flujo basado en eventos y la vista local.
+
+### Hipótesis verificables
+
+- **H1 — Transferencia y continuidad:** un evento `ProfileUpdated` durable permite consultar una cotización desde la Vista Materializada del Perfil aunque Perfilamiento esté temporalmente indisponible.
+- **H2 — Detección y retiro:** el Bus de Control / Salud detecta una réplica que no responde y el API Gateway la retira del tráfico autoritativo.
+- **H3 — Reintegro seguro:** una réplica recuperada debe pasar por `DOWN → SHADOW → ACTIVE`; durante `SHADOW` sus respuestas se validan, pero no son autoritativas.
+- **H4 — Consenso tolerante:** las estrategias A, B y C publican resultados correlacionados; el Perfilamiento decide por mayoría o por timeout sin mezclar ejecuciones concurrentes.
+
+## Arquitectura conceptual
 
 ```mermaid
 flowchart LR
-    OF[Open Finance Mock]
-    P[Profiling]
-    RB[(Redis Business + AOF)]
-    RC[(Redis Control)]
-    QA[Quoting A]
-    QB[Quoting B]
-    DBA[(SQLite A)]
-    DBB[(SQLite B)]
-    G[Gateway + Health Monitor]
+    GW[API Gateway<br/>Routing + Health Monitor]
+    BC[(Bus de Control / Salud<br/>Redis Control<br/>HealthPing / HealthEcho)]
+    CC[4C. Cotización Command<br/>generar / registrar cotización]
+    CQ[4Q. Cotización Query<br/>consultar cotización / estado]
+    MV[(Vista Materializada del Perfil<br/>SQLite local por réplica<br/>version + eventId)]
+    PC[3C. Perfilamiento Command<br/>calcular / refrescar perfil]
+    PQ[3Q. Perfilamiento Query<br/>consultar perfil vigente]
+    BE[(Bus de Eventos de Negocio<br/>Redis Streams + AOF)]
+    OF[Open Finance / Open Data<br/>Mock REST<br/>timeout 700 ms + Circuit Breaker]
+    CACHE[(Caché<br/>último perfil válido)]
+    QA[Réplica Cotización A<br/>quoting-a]
+    QB[Réplica Cotización B<br/>quoting-b]
 
-    P -->|HTTP 700 ms + Circuit Breaker| OF
-    QA -->|ProfileRefreshRequested| RB
-    QB -->|ProfileRefreshRequested| RB
-    RB -->|ProfileCalculationRequested| P
-    P -->|ProfilingResult A/B/C| RB
-    P -->|ProfileUpdated| RB
-    RB -->|quoting-a-materializer| QA
-    RB -->|quoting-b-materializer| QB
-    QA --> DBA
-    QB --> DBB
-    G -->|solo ACTIVE| QA
-    G -->|solo ACTIVE| QB
-    RC <-->|HealthPing / HealthEcho| G
-    RC <-->|HealthPing / HealthEcho| QA
-    RC <-->|HealthPing / HealthEcho| QB
+    GW -->|solo ACTIVE| QA
+    GW -->|solo ACTIVE| QB
+    GW --> CC
+    GW --> CQ
+    CC -->|ProfileRefreshRequested| BE
+    BE -->|ProfileCalculationRequested| PC
+    PC -->|ProfilingResult A/B/C| BE
+    PC -->|ProfileUpdated| BE
+    BE -->|quoting-a-materializer| QA
+    BE -->|quoting-b-materializer| QB
+    QA --> MV
+    QB --> MV
+    MV -->|lectura local| CQ
+    PC -->|consulta protegida| PQ
+    PQ --> CACHE
+    PC -->|REST| OF
+    BC <-->|HealthPing / HealthEcho| GW
+    BC <-->|HealthPing / HealthEcho| QA
+    BC <-->|HealthPing / HealthEcho| QB
 ```
 
-### Componentes
+### Componentes y traducción al código
 
-| Componente | Responsabilidad | Estado |
+| Nombre conceptual | Nombre técnico | Responsabilidad |
 |---|---|---|
-| `redis-business` | Streams de negocio con AOF y volumen persistente | Durable dentro del montaje local |
-| `redis-control` | Pub/Sub efímero de HealthPing/HealthEcho | Separado del plano de negocio |
-| `open-finance-mock` | Modos determinísticos NORMAL, SLOW, HTTP_500, TIMEOUT y DOWN | Inyección controlada |
-| `profiling` | Circuit Breaker, caché, estrategias A/B/C, Validator y `ProfileUpdated` | Command + Query experimental |
-| `quoting-a/b` | Materializador independiente y journey EDA desde SQLite | Read model local por réplica |
-| `gateway` | Routing ACTIVE, failover único, retiro y SHADOW | Health Monitor incluido |
+| Nombre conceptual | Nombre técnico | Responsabilidad |
+|---|---|---|
+| Bus de Eventos de Negocio | `redis-business` | Redis Streams con AOF y volumen persistente. Transporta eventos de negocio. |
+| Bus de Control / Salud | `redis-control` | Pub/Sub efímero para `HealthPing` y `HealthEcho`. Está separado del bus de negocio. |
+| Open Finance / Open Data | `open-finance-mock` | Proveedor externo simulado con modos determinísticos `NORMAL`, `SLOW`, `HTTP_500`, `TIMEOUT` y `DOWN`. |
+| Perfilamiento | `profiling` | Circuit Breaker, caché, estrategias A/B/C, Validator y publicación de `ProfileUpdated`. Incluye responsabilidades Command y Query. |
+| Cotización A/B | `quoting-a`, `quoting-b` | Réplicas con materializador independiente y Vista Materializada del Perfil local en SQLite. |
+| API Gateway | `gateway` | Enrutamiento a réplicas `ACTIVE`, failover único, retiro, reintegro y monitoreo de salud. |
+
+`4C. Cotización Command`, `4Q. Cotización Query`, `3C. Perfilamiento Command` y `3Q. Perfilamiento Query` son responsabilidades lógicas del diseño. En este experimento no son cuatro contenedores separados.
 
 ## Decisiones verificables
 
@@ -61,31 +97,41 @@ Cada réplica monta un volumen diferente y configura su propio `SQLITE_PATH`. La
 
 Un perfil inexistente o vencido produce `503` con `NO_VALID_PROFILE_AVAILABLE` o `PROFILE_EXPIRED`. `MAX_PROFILE_AGE_SECONDS=300` es un umbral experimental configurable, no un requisito oficial.
 
-### Consumer groups
+### Grupos de consumidores y entrega de eventos
 
-`quoting-a-materializer` y `quoting-b-materializer` son grupos diferentes. Ambos reciben cada `ProfileUpdated`. Los pendientes se reclaman con `XAUTOCLAIM` después de `PENDING_CLAIM_IDLE_MS`; nunca se utiliza `min_idle_time=0`.
+`quoting-a-materializer` y `quoting-b-materializer` son grupos diferentes. Ambos reciben cada `ProfileUpdated` y actualizan su propia Vista Materializada del Perfil. Los pendientes se reclaman con `XAUTOCLAIM` después de `PENDING_CLAIM_IDLE_MS`; nunca se utiliza `min_idle_time=0`.
 
-### Journey EDA y baseline síncrono
+En cambio, las estrategias A, B y C también utilizan grupos independientes para que cada una reciba cada `ProfileCalculationRequested`. Esta diferencia es fundamental: para votar se necesita que todos reciban el cálculo; para materializar se necesita que ambas réplicas reciban la actualización.
 
-- `GET /quotes/{customerId}` consulta SQLite local.
-- `POST /quotes/{customerId}/request-refresh` publica `ProfileRefreshRequested`.
-- `GET /sync/quotes/{customerId}` llama a Profiling y existe únicamente para demostrar la propagación de fallas de la arquitectura anterior.
+### Journey basado en eventos y línea base síncrona
 
-### Circuit Breaker y fallback
+- `POST /quotes/{customerId}/request-refresh` publica `ProfileRefreshRequested` en el Bus de Eventos de Negocio.
+- `GET /quotes/{customerId}` consulta la Vista Materializada del Perfil en SQLite local.
+- `GET /sync/quotes/{customerId}` llama a Perfilamiento por HTTP y existe únicamente para demostrar la propagación de fallas de la arquitectura anterior.
 
-Profiling limita Open Finance mediante `OPEN_FINANCE_TIMEOUT_MS`. Después de `CB_FAILURE_THRESHOLD`, el circuito pasa a OPEN. Al finalizar `CB_RECOVERY_TIMEOUT_SECONDS`, permite una sola prueba HALF_OPEN. Si existe caché vigente, estrategia A usa `CACHE`; si no existe, A reporta error y la política 2/3 todavía puede decidir con B/C.
+Por eso el flujo nuevo no es `Cotización → HTTP → Perfilamiento` en cada consulta. El flujo es:
+
+```text
+Cotización Command → Bus de Eventos de Negocio → Perfilamiento
+Perfilamiento → ProfileUpdated → Vista Materializada del Perfil
+Cotización Query → SQLite local → cotización
+```
+
+### Circuit Breaker y respaldo
+
+Perfilamiento limita Open Finance mediante `OPEN_FINANCE_TIMEOUT_MS`. Después de `CB_FAILURE_THRESHOLD`, el circuito pasa a `OPEN`. Al finalizar `CB_RECOVERY_TIMEOUT_SECONDS`, permite una sola prueba `HALF_OPEN`. Si existe caché vigente, la estrategia A usa `CACHE`; si no existe, A reporta error y la política 2/3 todavía puede decidir con B/C.
 
 ### Votación por eventos
 
-Cada cálculo publica `ProfileCalculationRequested`. A, B y C consumen mediante grupos independientes y publican `ProfilingResult`. El Validator agrupa por `correlationId`, espera hasta `VOTING_TIMEOUT_MS` y busca el grupo mayoritario dentro de `VOTING_TOLERANCE`.
+Cada cálculo publica `ProfileCalculationRequested`. Las estrategias A, B y C consumen mediante grupos independientes y publican `ProfilingResult`. El Validator agrupa por `correlationId`, espera hasta `VOTING_TIMEOUT_MS` y busca el grupo mayoritario dentro de `VOTING_TOLERANCE`.
 
 Para `40, 40, 90`, el resultado es `40` y C queda como outlier. Para `40, 40, timeout`, A/B forman consenso y C aparece en `missingStrategies`.
 
-### Health, failover y SHADOW
+### Control de salud, failover y SHADOW
 
-El Gateway envía HealthPing por Redis Control. Dos ausencias consecutivas, con la configuración incluida, cambian la réplica a DOWN. El routing utiliza exclusivamente instancias ACTIVE.
+El API Gateway envía `HealthPing` por el Bus de Control / Salud. Dos ausencias consecutivas, con la configuración incluida, cambian la réplica a `DOWN`. El enrutamiento utiliza exclusivamente réplicas `ACTIVE`.
 
-Si una instancia falla antes de quedar DOWN, el Gateway hace un solo reintento ante error de transporte contra otra instancia ACTIVE. Una réplica recuperada entra en SHADOW. Los GET autoritativos se comparan con respuestas shadow; la promoción requiere health checks suficientes, tiempo mínimo, validaciones y cero diferencias.
+Si una réplica falla antes de quedar `DOWN`, el API Gateway hace un solo reintento ante error de transporte contra otra réplica `ACTIVE`. Una réplica recuperada entra en `SHADOW`. Las respuestas autoritativas se comparan con respuestas shadow; la promoción requiere health checks suficientes, tiempo mínimo, validaciones y cero diferencias.
 
 El Docker healthcheck comprueba infraestructura del experimento. Ping-Echo es la táctica arquitectónica bajo evaluación; cumplen objetivos diferentes.
 

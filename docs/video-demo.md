@@ -5,7 +5,7 @@ Duración sugerida: 10 a 12 minutos. Graba la pantalla a 1080p y utiliza tres te
 ## Preparación antes de grabar
 
 ```bash
-cd "/Users/davidcombita/Documents/ChatGPT/Proyecto Arquitectura/solventa-mejoras"
+cd "/Users/davidcombita/Documents/GitHub/solventa"
 docker compose down -v
 docker compose up --build -d --wait
 python scripts/run_experiment.py E0
@@ -17,7 +17,7 @@ La primera ejecución descarga imágenes y construye contenedores. Hazla antes d
 
 ### 1. Introducción, 45 segundos
 
-Explica la hipótesis: Cotización conserva disponibilidad porque consulta una vista SQLite local. Redis Business transfiere el estado y Redis Control detecta réplicas caídas.
+Explica la hipótesis: Cotización conserva disponibilidad porque consulta una Vista Materializada del Perfil en SQLite local. El Bus de Eventos de Negocio transfiere el estado y el Bus de Control / Salud detecta réplicas caídas.
 
 Muestra brevemente `docker compose ps` y el diagrama Mermaid del README.
 
@@ -55,7 +55,7 @@ python scripts/run_experiment.py E5
 python scripts/run_experiment.py E6
 ```
 
-Destaca la secuencia `ACTIVE`, `DOWN`, `SHADOW`, `ACTIVE`. Durante SHADOW la respuesta autoritativa sigue viniendo de A y B solo recibe validaciones.
+Destaca la secuencia `ACTIVE`, `DOWN`, `SHADOW`, `ACTIVE`. Durante `SHADOW` la respuesta autoritativa sigue viniendo de A y B solo recibe validaciones.
 
 ### 5. E7 y E8, votación, 2 minutos
 
@@ -75,7 +75,7 @@ python scripts/run_experiment.py E9
 cat results/E9.json
 ```
 
-Aclara que Redis Control sigue activo y que las cotizaciones existentes salen desde SQLite. El experimento no demuestra alta disponibilidad de un clúster Redis; demuestra desacoplamiento del read model local frente a una caída temporal del bus de negocio.
+Aclara que el Bus de Control / Salud sigue activo y que las cotizaciones existentes salen desde SQLite. El experimento no demuestra alta disponibilidad de un clúster Redis; demuestra desacoplamiento de la Vista Materializada del Perfil frente a una caída temporal del Bus de Eventos de Negocio.
 
 ### 7. Evidencia y cierre, 1 minuto
 

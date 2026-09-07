@@ -1,11 +1,11 @@
-# Contratos de eventos
+# Contratos del Bus de Eventos de Negocio y del Bus de Control / Salud
 
-Todos los eventos de negocio usan Redis Streams en `redis-business`. Los mensajes de salud usan Redis Pub/Sub en `redis-control`. Los timestamps están expresados en ISO 8601 UTC.
+Todos los eventos de negocio usan Redis Streams en el **Bus de Eventos de Negocio** (`redis-business`). Los mensajes de salud usan Redis Pub/Sub en el **Bus de Control / Salud** (`redis-control`). Los timestamps están expresados en ISO 8601 UTC.
 
 ## ProfileRefreshRequested
 
-- Productor: Quoting.
-- Consumidor: Profiling.
+- Productor: Cotización (`quoting-a` o `quoting-b`).
+- Consumidor: Perfilamiento (`profiling`).
 - Stream: `profile-refresh-requests`.
 - Propósito: solicitar un recálculo sin acoplamiento HTTP entre servicios.
 
@@ -22,7 +22,7 @@ Todos los eventos de negocio usan Redis Streams en `redis-business`. Los mensaje
 
 ## ProfileCalculationRequested
 
-- Productor: orquestador interno de Profiling.
+- Productor: Command de Perfilamiento (`profiling`).
 - Consumidores: estrategias A, B y C, cada una con consumer group independiente.
 - Stream: `profile-calculation-requests`.
 - Propósito: iniciar la votación correlacionada.
@@ -40,7 +40,7 @@ Todos los eventos de negocio usan Redis Streams en `redis-business`. Los mensaje
 ## ProfilingResult
 
 - Productores: estrategias A, B y C.
-- Consumidor: Validator de Profiling.
+- Consumidor: Validator de Perfilamiento.
 - Stream: `profiling-results`.
 - Propósito: entregar un voto sin mezclar cálculos concurrentes.
 
@@ -62,8 +62,8 @@ El Validator espera A/B/C hasta `VOTING_TIMEOUT_MS`. Dos votos dentro de `VOTING
 
 ## ProfileUpdated
 
-- Productor: Profiling después de un consenso válido.
-- Consumidores: materializadores de Quoting A y B.
+- Productor: Perfilamiento después de un consenso válido.
+- Consumidores: materializadores de Cotización A y B.
 - Stream: `profile-updated`.
 - Propósito: transferir estado durable a cada réplica.
 
@@ -84,7 +84,7 @@ Cada materializador procesa el evento en una transacción SQLite. Un `eventId` r
 
 ## HealthPing
 
-- Productor: Health Monitor del Gateway o monitor de dependencia de Quoting.
+- Productor: Health Monitor del API Gateway o monitor de dependencia de Cotización.
 - Consumidor: instancia indicada por `targetInstanceId`.
 - Canal: `health-heartbeat`.
 
