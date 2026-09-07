@@ -46,20 +46,20 @@ def _run(base, n, customer_id, title):
             successes += 1
 
         vote = (body or {}).get("vote", {})
-        cb = (body or {}).get("circuit_breaker", {})
+        cb = (body or {}).get("circuitBreaker", {})
         last_circuit_state = cb.get("state")
-        if cb.get("state") == "open":
+        if cb.get("state") == "OPEN":
             circuit_opened_at_some_point = True
-        if not vote.get("vote_incomplete", True):
+        if not vote.get("voteIncomplete", True):
             complete_votes += 1
-        if vote.get("discrepancy"):
+        if vote.get("discrepancyDetected"):
             discrepancies += 1
 
         print(
             f"  [{i:02d}] code={code} latency_ms={latency_ms:.1f} "
-            f"circuit={cb.get('state')} final_score={vote.get('final_score')} "
-            f"vote_incomplete={vote.get('vote_incomplete')} "
-            f"discrepancy={vote.get('discrepancy')}"
+            f"circuit={cb.get('state')} final_score={vote.get('finalScore')} "
+            f"vote_incomplete={vote.get('voteIncomplete')} "
+            f"discrepancy={vote.get('discrepancyDetected')}"
         )
         time.sleep(0.1)
 
@@ -101,7 +101,7 @@ def mode_degraded(base, n, customer_id):
 
 
 def mode_circuit(base, customer_id):
-    url = f"{base}/profiles/{customer_id}/circuit-state"
+    url = f"{base}/circuit-state"
     code, body, _ = request_http("GET", url)
     print(json.dumps(body, indent=2, ensure_ascii=False))
 

@@ -1,108 +1,148 @@
-
-
 services:
-  redis:
+  redis-business:
     image: redis:7-alpine
+    command: redis-server --appendonly yes --appendfsync everysec
     ports:
       - "6379:6379"
+    volumes:
+      - redis-business-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+      interval: 3s
+      timeout: 2s
+      retries: 15
 
-  risk-provider:
+  redis-control:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  open-finance-mock:
     build: ./risk_provider
     environment:
-      LATENCY_MS: "50"
-      FAIL: "false"
+      OPEN_FINANCE_MODE: NORMAL
+      OPEN_FINANCE_LATENCY_MS: "50"
     ports:
       - "6000:6000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:6000/health', timeout=2)"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+      interval: 3s
+      timeout: 2s
+      retries: 15
 
   profiling:
     build: ./profiling
     environment:
       INSTANCE_ID: profiling-1
-      REDIS_URL: redis://redis:6379/0
-      HEALTH_CHANNEL: health-heartbeat
-      RISK_PROVIDER_URL: http://risk-provider:6000
-      RISK_PROVIDER_TIMEOUT_SECONDS: "0.7"
+      REDIS_BUSINESS_URL: redis://redis-business:6379/0
+      REDIS_CONTROL_URL: redis://redis-control:6379/0
+      OPEN_FINANCE_URL: http://open-finance-mock:6000
+      OPEN_FINANCE_TIMEOUT_MS: "700"
+      CB_FAILURE_THRESHOLD: "3"
+      CB_RECOVERY_TIMEOUT_SECONDS: "10"
+      PROFILE_CACHE_MAX_AGE_SECONDS: "3600"
+      VOTING_TIMEOUT_MS: "1000"
+      VOTING_TOLERANCE: "2"
     ports:
       - "7500:7500"
+    depends_on:
+      redis-business:
+        condition: service_healthy
+      redis-control:
+        condition: service_healthy
+      open-finance-mock:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7500/health', timeout=2)"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-    depends_on:
-      redis:
-        condition: service_healthy
-      risk-provider:
-        condition: service_healthy
+      interval: 3s
+      timeout: 2s
+      retries: 15
 
   quoting-a:
     build: ./quoting
     environment:
       INSTANCE_ID: quoting-a
-      REDIS_URL: redis://redis:6379/0
-      HEALTH_CHANNEL: health-heartbeat
+      SQLITE_PATH: /data/quoting-a.db
+      MATERIALIZER_GROUP: quoting-a-materializer
+      REDIS_BUSINESS_URL: redis://redis-business:6379/0
+      REDIS_CONTROL_URL: redis://redis-control:6379/0
       PROFILING_URL: http://profiling:7500
+      MAX_PROFILE_AGE_SECONDS: "300"
+      PENDING_CLAIM_IDLE_MS: "5000"
     ports:
-      - "7000:7000"
+      - "7002:7000"
+    volumes:
+      - quoting-a-data:/data
+    depends_on:
+      redis-business:
+        condition: service_healthy
+      redis-control:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7000/health', timeout=2)"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-    depends_on:
-      redis:
-        condition: service_healthy
-      profiling:
-        condition: service_healthy
+      interval: 3s
+      timeout: 2s
+      retries: 15
 
   quoting-b:
     build: ./quoting
     environment:
       INSTANCE_ID: quoting-b
-      REDIS_URL: redis://redis:6379/0
-      HEALTH_CHANNEL: health-heartbeat
+      SQLITE_PATH: /data/quoting-b.db
+      MATERIALIZER_GROUP: quoting-b-materializer
+      REDIS_BUSINESS_URL: redis://redis-business:6379/0
+      REDIS_CONTROL_URL: redis://redis-control:6379/0
       PROFILING_URL: http://profiling:7500
+      MAX_PROFILE_AGE_SECONDS: "300"
+      PENDING_CLAIM_IDLE_MS: "5000"
     ports:
       - "7001:7000"
+    volumes:
+      - quoting-b-data:/data
+    depends_on:
+      redis-business:
+        condition: service_healthy
+      redis-control:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7000/health', timeout=2)"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-    depends_on:
-      redis:
-        condition: service_healthy
-      profiling:
-        condition: service_healthy
+      interval: 3s
+      timeout: 2s
+      retries: 15
 
   gateway:
     build: ./gateway
     environment:
-      POOL_NAME: quoting
       BACKENDS: quoting-a=http://quoting-a:7000,quoting-b=http://quoting-b:7000
-      REDIS_URL: redis://redis:6379/0
-      HEALTH_CHANNEL: health-heartbeat
+      REDIS_CONTROL_URL: redis://redis-control:6379/0
+      HEALTH_PING_INTERVAL_SECONDS: "2"
+      HEALTH_ECHO_TIMEOUT_SECONDS: "0.7"
+      HEALTH_FAILURE_THRESHOLD: "2"
+      SHADOW_MIN_HEALTH_SUCCESSES: "2"
+      SHADOW_MIN_VALIDATIONS: "1"
+      SHADOW_MIN_SECONDS: "2"
+      PROXY_TIMEOUT_SECONDS: "2"
     ports:
       - "8080:8080"
     depends_on:
-      redis:
+      redis-control:
         condition: service_healthy
       quoting-a:
         condition: service_healthy
       quoting-b:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=2)"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+volumes:
+  redis-business-data:
+  quoting-a-data:
+  quoting-b-data:

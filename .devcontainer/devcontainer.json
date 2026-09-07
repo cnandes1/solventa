@@ -5,7 +5,7 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "postCreateCommand": "docker compose up --build -d && docker compose ps",
-  "forwardPorts": [8080, 7500, 7000, 7001, 6000],
+  "forwardPorts": [8080, 7500, 7002, 7001, 6000],
   "portsAttributes": {
     "8080": {
       "label": "Gateway (pool quoting)",
@@ -15,7 +15,7 @@
       "label": "Profiling",
       "onAutoForward": "notify"
     },
-    "7000": {
+    "7002": {
       "label": "Quoting A",
       "onAutoForward": "silent"
     },

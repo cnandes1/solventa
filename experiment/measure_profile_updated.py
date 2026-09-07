@@ -46,7 +46,8 @@ def mode_propagation(profiling_url, quoting_url, customer_id, timeout_s=60):
 
     while time.time() < deadline:
         code, body, _ = request_http("GET", view_url, timeout=5)
-        if code == 200 and body and int(body.get("version", -1)) >= expected_version:
+        actual_version = int(((body or {}).get("profile") or {}).get("version", -1))
+        if code == 200 and actual_version >= expected_version:
             propagation_latency = time.time() - start
             print(f"Materialized view: {json.dumps(body, ensure_ascii=False)}")
             print(f"\nPASS: version {expected_version} propagated in {propagation_latency:.2f}s.")
@@ -80,12 +81,13 @@ def mode_order(profiling_url, quoting_url, customer_id, n):
     deadline = time.time() + 30
     while time.time() < deadline:
         code, body, _ = request_http("GET", view_url, timeout=5)
-        if code == 200 and body and int(body.get("version", -1)) >= last_version:
+        actual_version = int(((body or {}).get("profile") or {}).get("version", -1))
+        if code == 200 and actual_version >= last_version:
             print(f"Final materialized view: {json.dumps(body, ensure_ascii=False)}")
-            if int(body["version"]) == last_version:
+            if actual_version == last_version:
                 print(f"PASS: the view landed exactly on the last version ({last_version}), no regression.")
             else:
-                print(f"FAIL: the view landed on version {body['version']}, different from the last emitted ({last_version}).")
+                print(f"FAIL: the view landed on version {actual_version}, different from the last emitted ({last_version}).")
             return
         time.sleep(0.5)
 
@@ -99,7 +101,7 @@ def main():
 
     mode = sys.argv[1]
     profiling_url = (sys.argv[2] if len(sys.argv) > 2 else "http://localhost:7500").rstrip("/")
-    quoting_url = (sys.argv[3] if len(sys.argv) > 3 else "http://localhost:7000").rstrip("/")
+    quoting_url = (sys.argv[3] if len(sys.argv) > 3 else "http://localhost:7002").rstrip("/")
     customer_id = sys.argv[4] if len(sys.argv) > 4 else "1"
 
     if mode == "propagation":
