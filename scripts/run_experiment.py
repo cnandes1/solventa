@@ -5,6 +5,7 @@ import argparse
 import csv
 import json
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -13,6 +14,9 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
+
+# security_scenarios imports this module by name; reuse this copy when run as a script.
+sys.modules.setdefault("run_experiment", sys.modules[__name__])
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
@@ -23,7 +27,15 @@ URLS = {
     "quoting-a": "http://localhost:7002",
     "quoting-b": "http://localhost:7001",
     "open-finance": "http://localhost:6000",
+    "idp": "http://localhost:6100",
+    "pdp": "http://localhost:6200",
 }
+DEFAULT_TENANT_ID = "solventa"
+CUSTOMER_SCOPES = ["quotes:read", "profiles:read", "profiles:refresh"]
+E_IDS = [f"E{i}" for i in range(10)]
+SEC_C_IDS = [f"SEC-C{i}" for i in range(10)]
+SEC_I_IDS = [f"SEC-I{i}" for i in range(10)]
+EXPERIMENT_IDS = [*E_IDS, *SEC_C_IDS, *SEC_I_IDS]
 HYPOTHESES = {
     "E0": "Baseline cuantitativo",
     "E1": "ASR-02: fallback ante Open Finance DOWN",
@@ -35,6 +47,26 @@ HYPOTHESES = {
     "E7": "H4: consenso excluye outlier",
     "E8": "H4: timeout decide con respuesta ausente",
     "E9": "H1: vista local sobrevive a Redis Business DOWN",
+    "SEC-C0": "AS-4: dueño con scope correcto accede a su cotización",
+    "SEC-C1": "AS-4: request sin token es rechazado",
+    "SEC-C2": "AS-4: token vencido es rechazado",
+    "SEC-C3": "AS-4: otro cliente no accede sin delegación",
+    "SEC-C4": "AS-4: scope insuficiente es rechazado",
+    "SEC-C5": "AS-4: delegación explícita permite el acceso",
+    "SEC-C6": "AS-4: tenant distinto es rechazado",
+    "SEC-C7": "AS-4: PDP caído falla cerrado",
+    "SEC-C8": "AS-4: firma de token alterada es rechazada",
+    "SEC-C9": "AS-4: capa de autorización bajo carga",
+    "SEC-I0": "AS-8: evento firmado se aplica",
+    "SEC-I1": "AS-8: payload alterado es rechazado",
+    "SEC-I2": "AS-8: evento sin firma es rechazado",
+    "SEC-I3": "AS-8: keyId desconocido es rechazado",
+    "SEC-I4": "AS-8: ACL impide publicar sin rol productor",
+    "SEC-I5": "AS-8: ACL impide consumir sin rol consumidor",
+    "SEC-I6": "AS-8: rotación de llave sin romper eventos previos",
+    "SEC-I7": "AS-8: idempotencia intacta con firma válida",
+    "SEC-I8": "AS-8: verificación de firma bajo carga",
+    "SEC-I9": "AS-8: auditoría de rechazos sin material de llave",
 }
 CRITERIA = {
     "E0": ("availability", "100% para perfiles precargados"),
@@ -47,12 +79,34 @@ CRITERIA = {
     "E7": ("voting outlier", "resultado 40 y C marcado como outlier"),
     "E8": ("voting timeout", "resultado 40, C ausente y duración < 2.5 s"),
     "E9": ("availability", "100% desde SQLite con Redis Business DOWN"),
+    "SEC-C0": ("http status", "200 en todas las llamadas"),
+    "SEC-C1": ("http status + reason", "401 MISSING_TOKEN"),
+    "SEC-C2": ("http status + reason", "401 TOKEN_EXPIRED"),
+    "SEC-C3": ("http status + reason", "403 OWNERSHIP_MISMATCH"),
+    "SEC-C4": ("http status + reason", "403 INSUFFICIENT_SCOPE"),
+    "SEC-C5": ("http status + audit", "200 y AUTHZ_DECISION PERMIT/DELEGATION"),
+    "SEC-C6": ("http status + reason", "403 TENANT_MISMATCH"),
+    "SEC-C7": ("http status + reason", "503 PDP_UNAVAILABLE y nunca 200"),
+    "SEC-C8": ("http status + reason", "401 INVALID_SIGNATURE"),
+    "SEC-C9": ("availability + authz overhead", "100% con autorización activa"),
+    "SEC-I0": ("integrity + decision", "verificado y APPLIED en A/B"),
+    "SEC-I1": ("integrity rejection", "SIGNATURE_MISMATCH en A/B y vista sin cambios"),
+    "SEC-I2": ("integrity rejection", "MISSING_INTEGRITY_FIELDS en A/B y vista sin cambios"),
+    "SEC-I3": ("integrity rejection", "UNKNOWN_KEY en A/B y vista sin cambios"),
+    "SEC-I4": ("redis acl", "XADD sin rol productor responde NOPERM"),
+    "SEC-I5": ("redis acl", "lectura sin rol consumidor responde NOPERM"),
+    "SEC-I6": ("key rotation", "llave nueva y anterior verifican, 0 rechazos"),
+    "SEC-I7": ("idempotency", "reenvío firmado produce DUPLICATE, 0 rechazos"),
+    "SEC-I8": ("availability + integrity", "100%, eventos verificados y 0 rechazos"),
+    "SEC-I9": ("audit", "3 causas de rechazo auditadas, sin secretos en logs"),
 }
 
 
-def http(method: str, url: str, body: dict | None = None, timeout: float = 5) -> tuple[int | None, dict, float]:
+def http(method: str, url: str, body: dict | None = None, timeout: float = 5,
+         headers: dict | None = None) -> tuple[int | None, dict, float]:
     data = json.dumps(body).encode() if body is not None else None
-    request = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
+    request = urllib.request.Request(url, data=data, method=method,
+                                     headers={"Content-Type": "application/json", **(headers or {})})
     started = time.monotonic()
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -71,6 +125,29 @@ def compose(*args: str) -> None:
     subprocess.run(["docker", "compose", *args], cwd=ROOT, check=True)
 
 
+def issue_token(sub: str, tenant_id: str = DEFAULT_TENANT_ID, scopes: list[str] | None = None,
+                exp_delta: int = 3600) -> str:
+    code, body, _ = http("POST", f"{URLS['idp']}/tokens", {
+        "sub": sub, "tenantId": tenant_id, "scopes": CUSTOMER_SCOPES if scopes is None else scopes,
+        "expiresIn": exp_delta,
+    })
+    if code != 200:
+        raise RuntimeError(f"cannot issue test token for {sub}: {body}")
+    return body["access_token"]
+
+
+_token_cache: dict[str, tuple[str, float]] = {}
+
+
+def auth_headers(customer_id: str) -> dict:
+    """Owner token for the availability journey (E0-E9 run through the AS-4 layer)."""
+    token, expires_at = _token_cache.get(customer_id, ("", 0.0))
+    if expires_at - time.time() < 60:
+        token, expires_at = issue_token(customer_id), time.time() + 3600
+        _token_cache[customer_id] = (token, expires_at)
+    return {"Authorization": f"Bearer {token}"}
+
+
 def percentile(values: list[float], quantile: float) -> float:
     if not values:
         return 0.0
@@ -83,12 +160,14 @@ def run_load(duration_seconds: float = 6, workers: int = 8) -> dict:
     deadline = time.monotonic() + duration_seconds
     lock = threading.Lock()
     samples: list[tuple[int | None, float, str]] = []
+    headers = {customer_id: auth_headers(customer_id) for customer_id in CUSTOMERS}
 
     def worker(offset: int) -> None:
         counter = offset
         while time.monotonic() < deadline:
             customer_id = CUSTOMERS[counter % len(CUSTOMERS)]
-            code, body, latency = http("GET", f"{URLS['gateway']}/quotes/{customer_id}", timeout=3)
+            code, body, latency = http("GET", f"{URLS['gateway']}/quotes/{customer_id}", timeout=3,
+                                       headers=headers[customer_id])
             category = body.get("resultCategory", "TECHNICAL_FAILURE")
             with lock:
                 samples.append((code, latency, category))
@@ -246,7 +325,8 @@ def execute(scenario: str) -> dict:
         try:
             time.sleep(3)
             result = run_load()
-            code, _, _ = http("GET", f"{URLS['gateway']}/sync/quotes/C001", timeout=3)
+            code, _, _ = http("GET", f"{URLS['gateway']}/sync/quotes/C001", timeout=3,
+                              headers=auth_headers("C001"))
         finally:
             compose("start", "profiling")
         result["sync_baseline_failed"] = code != 200
@@ -289,7 +369,7 @@ def execute(scenario: str) -> dict:
         deadline = time.monotonic() + 35
         seen_shadow = False
         while time.monotonic() < deadline:
-            http("GET", f"{URLS['gateway']}/quotes/C001")
+            http("GET", f"{URLS['gateway']}/quotes/C001", headers=auth_headers("C001"))
             _, status, _ = http("GET", f"{URLS['gateway']}/gateway/status")
             state = status.get("instances", {}).get("quoting-b", {}).get("state")
             seen_shadow = seen_shadow or state == "SHADOW"
@@ -297,6 +377,9 @@ def execute(scenario: str) -> dict:
                 return {"seen_shadow": seen_shadow, "final_state": state, "accepted": seen_shadow}
             time.sleep(0.5)
         return {"seen_shadow": seen_shadow, "final_state": state, "accepted": False}
+    if scenario.startswith(("SEC-C", "SEC-I")):
+        import security_scenarios
+        return security_scenarios.execute(scenario)
     if scenario == "E7":
         set_voting_scenario({"A": {"mode": "NORMAL", "score": 40}, "B": {"mode": "NORMAL", "score": 40}, "C": {"mode": "NORMAL", "score": 90}})
         try:
@@ -372,6 +455,8 @@ def save_result(scenario: str, result: dict) -> None:
 
 
 def evidence_text(scenario: str, payload: dict) -> str:
+    if scenario.startswith("SEC-"):
+        return payload.get("evidence") or payload.get("error", "")
     if scenario in {"E0", "E9"}:
         return f"availability={payload.get('availability')}%"
     if scenario == "E1":
@@ -400,7 +485,7 @@ def evidence_text(scenario: str, payload: dict) -> str:
 
 def write_acceptance_matrix() -> None:
     rows = []
-    for scenario in (f"E{i}" for i in range(10)):
+    for scenario in EXPERIMENT_IDS:
         path = RESULTS / f"{scenario}.json"
         if not path.exists():
             continue
@@ -421,10 +506,15 @@ def write_acceptance_matrix() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run reproducible Solventa availability scenarios")
-    parser.add_argument("scenario", choices=[*(f"E{i}" for i in range(10)), "all"])
+    parser = argparse.ArgumentParser(description="Run reproducible Solventa availability and security scenarios")
+    parser.add_argument("scenario", choices=[*EXPERIMENT_IDS, "all", "all-security", "all-experiments"])
     args = parser.parse_args()
-    scenarios = [f"E{i}" for i in range(10)] if args.scenario == "all" else [args.scenario]
+    groups = {
+        "all": E_IDS,
+        "all-security": [*SEC_C_IDS, *SEC_I_IDS],
+        "all-experiments": EXPERIMENT_IDS,
+    }
+    scenarios = groups.get(args.scenario, [args.scenario])
     failures = 0
     for scenario in scenarios:
         print(f"\n[{scenario}] {HYPOTHESES[scenario]}")

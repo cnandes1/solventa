@@ -1,11 +1,12 @@
 services:
   redis-business:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --appendfsync everysec
+    command: redis-server --appendonly yes --appendfsync everysec --aclfile /usr/local/etc/redis/users.acl
     ports:
       - "6379:6379"
     volumes:
       - redis-business-data:/data
+      - ./redis/users.acl:/usr/local/etc/redis/users.acl:ro
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
@@ -39,7 +40,7 @@ services:
     build: ./profiling
     environment:
       INSTANCE_ID: profiling-1
-      REDIS_BUSINESS_URL: redis://redis-business:6379/0
+      REDIS_BUSINESS_URL: redis://profile_producer:TEST-ONLY-redis-profile-producer-pw-2026-09@redis-business:6379/0
       REDIS_CONTROL_URL: redis://redis-control:6379/0
       OPEN_FINANCE_URL: http://open-finance-mock:6000
       OPEN_FINANCE_TIMEOUT_MS: "700"
@@ -48,6 +49,8 @@ services:
       PROFILE_CACHE_MAX_AGE_SECONDS: "3600"
       VOTING_TIMEOUT_MS: "1000"
       VOTING_TOLERANCE: "2"
+      HMAC_KEY_ID: test-key-2026-09
+      HMAC_KEY: TEST-ONLY-hmac-profile-updated-2026-09
     ports:
       - "7500:7500"
     depends_on:
@@ -69,11 +72,12 @@ services:
       INSTANCE_ID: quoting-a
       SQLITE_PATH: /data/quoting-a.db
       MATERIALIZER_GROUP: quoting-a-materializer
-      REDIS_BUSINESS_URL: redis://redis-business:6379/0
+      REDIS_BUSINESS_URL: redis://profile_consumer:TEST-ONLY-redis-profile-consumer-pw-2026-09@redis-business:6379/0
       REDIS_CONTROL_URL: redis://redis-control:6379/0
       PROFILING_URL: http://profiling:7500
       MAX_PROFILE_AGE_SECONDS: "300"
       PENDING_CLAIM_IDLE_MS: "5000"
+      KNOWN_KEYS_JSON: '{"test-key-2026-09": "TEST-ONLY-hmac-profile-updated-2026-09"}'
     ports:
       - "7002:7000"
     volumes:
@@ -95,11 +99,12 @@ services:
       INSTANCE_ID: quoting-b
       SQLITE_PATH: /data/quoting-b.db
       MATERIALIZER_GROUP: quoting-b-materializer
-      REDIS_BUSINESS_URL: redis://redis-business:6379/0
+      REDIS_BUSINESS_URL: redis://profile_consumer:TEST-ONLY-redis-profile-consumer-pw-2026-09@redis-business:6379/0
       REDIS_CONTROL_URL: redis://redis-control:6379/0
       PROFILING_URL: http://profiling:7500
       MAX_PROFILE_AGE_SECONDS: "300"
       PENDING_CLAIM_IDLE_MS: "5000"
+      KNOWN_KEYS_JSON: '{"test-key-2026-09": "TEST-ONLY-hmac-profile-updated-2026-09"}'
     ports:
       - "7001:7000"
     volumes:
@@ -111,6 +116,32 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7000/health', timeout=2)"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  idp:
+    build: ./security/idp
+    environment:
+      IDP_KEY_ID: idp-test-2026-09
+      IDP_SIGNING_KEY: TEST-ONLY-idp-hs256-not-a-real-secret-2026-09
+      IDP_ISSUER: solventa-test-idp
+      IDP_AUDIENCE: solventa-gateway
+      DEFAULT_TENANT_ID: solventa
+    ports:
+      - "6100:6100"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:6100/health', timeout=2)"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  pdp:
+    build: ./security/pdp
+    ports:
+      - "6200:6200"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:6200/health', timeout=2)"]
       interval: 3s
       timeout: 2s
       retries: 15
@@ -127,6 +158,12 @@ services:
       SHADOW_MIN_VALIDATIONS: "1"
       SHADOW_MIN_SECONDS: "2"
       PROXY_TIMEOUT_SECONDS: "2"
+      IDP_ISSUER: solventa-test-idp
+      IDP_AUDIENCE: solventa-gateway
+      IDP_KEYS_JSON: '{"idp-test-2026-09": "TEST-ONLY-idp-hs256-not-a-real-secret-2026-09"}'
+      PDP_URL: http://pdp:6200
+      PDP_TIMEOUT_MS: "300"
+      RESOURCE_TENANT_ID: solventa
     ports:
       - "8080:8080"
     depends_on:
@@ -135,6 +172,10 @@ services:
       quoting-a:
         condition: service_healthy
       quoting-b:
+        condition: service_healthy
+      idp:
+        condition: service_healthy
+      pdp:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=2)"]

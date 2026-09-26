@@ -2,6 +2,8 @@
 
 Experimento reproducible para evaluar si transferencia de estado, vistas materializadas locales y detección asíncrona de fallas sostienen el journey de Cotización bajo las condiciones definidas para ASR-02 y ASR-05.
 
+Un segundo experimento, de seguridad, evalúa AS-4 (confidencialidad) y AS-8 (integridad) sobre el mismo montaje; ver [Experimento de seguridad](#experimento-de-seguridad-as-4--as-8).
+
 El resultado de una ejecución representa evidencia dentro del entorno evaluado. No equivale a una predicción de disponibilidad mensual en producción.
 
 ## Hipótesis
@@ -102,7 +104,7 @@ docker compose up --build -d --wait
 docker compose ps
 ```
 
-Puertos host: Gateway `8080`, Profiling `7500`, Quoting A `7002`, Quoting B `7001`, Open Finance `6000`, Redis Business `6379` y Redis Control `6380`. Quoting A usa `7002` porque macOS suele reservar `7000` para Control Center; dentro de Docker ambas réplicas escuchan en `7000`.
+Puertos host: Gateway `8080`, Profiling `7500`, Quoting A `7002`, Quoting B `7001`, Open Finance `6000`, IdP de prueba `6100`, PDP `6200`, Redis Business `6379` y Redis Control `6380`. Quoting A usa `7002` porque macOS suele reservar `7000` para Control Center; dentro de Docker ambas réplicas escuchan en `7000`.
 
 Comprobación inicial:
 
@@ -110,8 +112,12 @@ Comprobación inicial:
 curl -s -X POST http://localhost:7500/profiles/C001/refresh | python -m json.tool
 curl -s http://localhost:7002/materialized-profiles/C001 | python -m json.tool
 curl -s http://localhost:7001/materialized-profiles/C001 | python -m json.tool
-curl -s http://localhost:8080/quotes/C001 | python -m json.tool
+TOKEN=$(curl -s -X POST http://localhost:6100/tokens -H 'Content-Type: application/json' \
+  -d '{"sub":"C001","scopes":["quotes:read"]}' | python -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+curl -s http://localhost:8080/quotes/C001 -H "Authorization: Bearer $TOKEN" | python -m json.tool
 ```
+
+Desde el experimento de seguridad, el Gateway exige un JWT para `/quotes/*`. El runner y los scripts de carga obtienen un token del IdP de prueba para cada cliente.
 
 ## Pruebas automatizadas
 
@@ -157,6 +163,56 @@ Cada ejecución guarda `results/E<n>.json` y actualiza `results/summary.csv` y `
 | E7 | A=40, B=40, C=90 | C marcado como outlier |
 | E8 | C no responde | Decisión A/B después del timeout |
 | E9 | Redis Business DOWN | Cotización desde SQLite y salud por Redis Control |
+
+## Experimento de seguridad (AS-4 / AS-8)
+
+Plan completo: [docs/security-experiment-plan.md](docs/security-experiment-plan.md). Guion de video: [docs/video-demo-security.md](docs/video-demo-security.md).
+
+- **H-AS4, confidencialidad.** El Gateway valida el JWT (firma HS256, `exp`, `aud`, `iss`, `kid`) y consulta al PDP con `{subject, resource, action}`. El PDP deniega si el tenant no coincide, si falta el scope de la acción o si el sujeto no es el dueño y no tiene `delegated:<owner>`. Si el PDP no responde en `PDP_TIMEOUT_MS`, la respuesta es `503 PDP_UNAVAILABLE`: el sistema falla cerrado siempre. Las rutas no mapeadas se deniegan. `/gateway/status`, `/metrics`, `/health` y `/admin/*` quedan fuera de esta capa.
+- **H-AS8, integridad.** Profiling firma cada `ProfileUpdated` con HMAC-SHA256. Quoting verifica la firma antes de materializar el evento y descarta los eventos alterados, sin firma o con un `keyId` desconocido. La ACL de Redis Business restringe quién puede publicar y consumir en `profile-updated` ([redis/README.md](redis/README.md)).
+- **Auditoría.** Los eventos `AUTHZ_DECISION` (Gateway) e `INTEGRITY_CHECK` (Quoting) usan el mismo formato JSON que los demás logs. Nunca incluyen el JWT ni secretos HMAC.
+
+Todas las llaves y contraseñas son valores `TEST-ONLY-*` que se definen en `docker-compose.yaml`.
+
+```bash
+python scripts/run_experiment.py SEC-C3
+python scripts/run_experiment.py all-security      # SEC-C0..C9 y SEC-I0..I9
+python scripts/run_experiment.py all-experiments   # E0..E9 y después SEC-*
+RUN_INTEGRATION=1 pytest -m integration tests/security -v
+```
+
+`all` sigue ejecutando solo `E0`-`E9`. Los resultados quedan en `results/SEC-*.json` y se agregan como filas a `summary.csv` y `acceptance_matrix.csv`, con las mismas columnas.
+
+| Escenario | Condición | Criterio programado |
+|---|---|---|
+| SEC-C0 | Dueño con `quotes:read` | 200 en todas las llamadas |
+| SEC-C1 | Sin `Authorization` | 401 `MISSING_TOKEN` |
+| SEC-C2 | Token vencido | 401 `TOKEN_EXPIRED` |
+| SEC-C3 | Token de C002 pide C001 | 403 `OWNERSHIP_MISMATCH` |
+| SEC-C4 | Solo `profiles:read` | 403 `INSUFFICIENT_SCOPE` |
+| SEC-C5 | C002 con `quotes:read` + `delegated:C001` | 200 y auditoría `PERMIT/DELEGATION` |
+| SEC-C6 | Tenant del token distinto | 403 `TENANT_MISMATCH` |
+| SEC-C7 | `docker compose stop pdp` | 503 `PDP_UNAVAILABLE`, nunca 200 |
+| SEC-C8 | Un carácter de la firma alterado | 401 `INVALID_SIGNATURE` |
+| SEC-C9 | Carga de 6 s con autorización | 100% y overhead medio de autorización reportado |
+| SEC-I0 | Refresh normal | Verificado y `APPLIED` en A/B |
+| SEC-I1 | `riskScore` alterado conservando `payloadHash` | `SIGNATURE_MISMATCH`, vista y prima sin cambios |
+| SEC-I2 | Evento sin campos de integridad | `MISSING_INTEGRITY_FIELDS` |
+| SEC-I3 | Firmado con `keyId` desconocido | `UNKNOWN_KEY` |
+| SEC-I4 | `XADD` anónimo o con rol consumidor | `NOPERM` y nada consumido |
+| SEC-I5 | `XREADGROUP`/`XRANGE` anónimo o con rol productor | `NOPERM` |
+| SEC-I6 | Rotación a `test-key-2026-10` | Llave nueva y anterior verifican, 0 rechazos |
+| SEC-I7 | Reenvío del mismo evento firmado | `DUPLICATE`, 0 rechazos |
+| SEC-I8 | Carga + refrescos continuos | 100%, todos verificados, 0 rechazos |
+| SEC-I9 | Rechazos I1+I2+I3 | 3 razones auditadas y 0 secretos en logs |
+
+Decisiones de implementación que conviene conocer:
+
+- Para que la idempotencia o el versionado no oculten la falta de verificación, SEC-I1, SEC-I2 y SEC-I3 publican el evento falsificado con un `eventId` nuevo y una `version` mayor. Sin verificación, ese evento se aplicaría.
+- Los eventos falsificados se inyectan con las credenciales `profile_producer`. Esto simula un atacante que obtuvo acceso al bus pero no la llave HMAC, y muestra que las dos defensas son independientes.
+- Una delegación no reemplaza el scope de la acción: SEC-C5 usa `["quotes:read", "delegated:C001"]`.
+- El Gateway valida el JWT localmente con la llave compartida del IdP (`IDP_KEYS_JSON`, por `kid`). El IdP solo emite tokens y no participa en cada request.
+- SEC-C9 mide el costo de autorización con `authz_duration_us_total / authz_checks` del Gateway. SEC-I8 compara su p95 y throughput con `results/E0.json`.
 
 ## Carga con Locust
 
@@ -217,6 +273,7 @@ Los servicios imprimen JSON estructurado con timestamp, servicio, instancia, eve
 
 - Contratos: [docs/events.md](docs/events.md)
 - Guion de video: [docs/video-demo.md](docs/video-demo.md)
+- Guion de video de seguridad: [docs/video-demo-security.md](docs/video-demo-security.md)
 
 ## Limitaciones
 
@@ -225,6 +282,7 @@ Los servicios imprimen JSON estructurado con timestamp, servicio, instancia, eve
 - Las métricas residen en memoria y se reinician con cada contenedor.
 - El runner genera evidencia en una sola máquina y durante intervalos cortos.
 - Flask se ejecuta con su servidor integrado porque el objetivo es un experimento local, no un despliegue productivo.
+- El IdP y el PDP son de prueba: HS256 con llave compartida y sin JWKS, revocación ni mTLS entre servicios. `redis-control` queda sin ACL, fuera del alcance de AS-8.
 - SQLite representa una vista local por réplica. El experimento no evalúa replicación de la base ni crecimiento masivo.
 
 ## Limpieza
