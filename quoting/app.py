@@ -13,6 +13,7 @@ import redis
 import requests
 from flask import Flask, jsonify, request
 
+import event_verification
 from storage import ProfileViewRepository
 
 app = Flask(__name__)
@@ -30,6 +31,8 @@ PENDING_CLAIM_IDLE_MS = int(os.environ.get("PENDING_CLAIM_IDLE_MS", "5000"))
 PROFILE_HEALTH_INTERVAL_SECONDS = float(os.environ.get("PROFILE_HEALTH_INTERVAL_SECONDS", "2"))
 PROFILE_HEALTH_TIMEOUT_SECONDS = float(os.environ.get("PROFILE_HEALTH_TIMEOUT_SECONDS", "1"))
 STREAM_PROFILE_UPDATED = "profile-updated"
+# TEST ONLY: {"keyId": "secret"} injected through docker-compose.yaml.
+KNOWN_KEYS_JSON = os.environ.get("KNOWN_KEYS_JSON", "{}")
 STREAM_REFRESH_REQUESTS = "profile-refresh-requests"
 
 
@@ -69,6 +72,14 @@ _business_available = False
 _profiling_available = False
 _health_waiters: dict[str, threading.Event] = {}
 _materializer_paused = False
+_keys_lock = threading.Lock()
+
+
+def configured_keys() -> dict[str, str]:
+    return {str(key_id): str(secret) for key_id, secret in json.loads(KNOWN_KEYS_JSON).items()}
+
+
+_known_keys = configured_keys()
 
 
 def log_event(event: str, **fields) -> None:
@@ -126,10 +137,34 @@ def parse_event(fields: dict) -> dict:
         "riskScore": float(fields["riskScore"]),
         "riskLevel": fields.get("riskLevel"),
         "timestamp": fields["timestamp"],
+        "producerId": fields.get("producerId"),
+        "keyId": fields.get("keyId"),
+        "schemaVersion": fields.get("schemaVersion"),
     }
 
 
+def verify_event(fields: dict) -> tuple[bool, str]:
+    with _keys_lock:
+        known_keys = dict(_known_keys)
+    return event_verification.verify_event(fields, known_keys)
+
+
 def process_message(message_id: str, fields: dict, recovered: bool = False) -> None:
+    ok, reason = verify_event(fields)
+    if not ok:
+        # Rejected events are acked and dropped: they are never retried and never
+        # recorded in processed_events, so a forged copy cannot poison idempotency.
+        metrics.increment("integrity_rejected")
+        metrics.increment(f"integrity_rejected_{reason.lower()}")
+        log_event("INTEGRITY_CHECK", eventId=fields.get("eventId"), customerId=fields.get("customerId"),
+                  producerId=fields.get("producerId"), keyId=fields.get("keyId"),
+                  result="REJECTED", reason=reason)
+        business.xack(STREAM_PROFILE_UPDATED, MATERIALIZER_GROUP, message_id)
+        return
+    metrics.increment("integrity_verified")
+    metrics.increment(f"integrity_verified_key_{fields['keyId']}")
+    log_event("INTEGRITY_CHECK", eventId=fields["eventId"], customerId=fields["customerId"],
+              producerId=fields["producerId"], keyId=fields["keyId"], result="VERIFIED", reason=reason)
     event = parse_event(fields)
     result = repository.apply_event(event)
     metrics.increment("events_consumed")
@@ -353,6 +388,23 @@ def admin_materializer():
         paused = _materializer_paused
     log_event("MATERIALIZER_STATE_CHANGED", result="PAUSED" if paused else "RUNNING")
     return jsonify({"status": "ok", "paused": paused}), 200
+
+
+@app.post("/admin/integrity/known-keys")
+def admin_known_keys():
+    """Experiment only: add a verification key (SEC-I6) or reset to the configured set."""
+    body = request.get_json(silent=True) or {}
+    with _keys_lock:
+        if body.get("reset"):
+            _known_keys.clear()
+            _known_keys.update(configured_keys())
+        elif body.get("keyId") and body.get("secret"):
+            _known_keys[str(body["keyId"])] = str(body["secret"])
+        else:
+            return jsonify({"error": "KEY_ID_AND_SECRET_REQUIRED"}), 400
+        key_ids = sorted(_known_keys)
+    log_event("KNOWN_KEYS_CHANGED", keyIds=key_ids, result="RESET" if body.get("reset") else "ADDED")
+    return jsonify({"status": "ok", "knownKeyIds": key_ids}), 200
 
 
 @app.get("/metrics")

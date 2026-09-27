@@ -1,0 +1,17 @@
+{
+  "scenario": "SEC-I5",
+  "hypothesis": "AS-8: ACL impide consumir sin rol consumidor",
+  "executedAt": "2026-09-27T01:30:06.017774+00:00",
+  "responses": {
+    "anonymous_xreadgroup": "NOPERM User default has no permissions to run the 'xreadgroup' command",
+    "producer_xreadgroup": "NOPERM No permissions to access a key",
+    "producer_xrange": "NOPERM User profile_producer has no permissions to run the 'xrange' command"
+  },
+  "denied": {
+    "anonymous_xreadgroup": true,
+    "producer_xreadgroup": true,
+    "producer_xrange": true
+  },
+  "evidence": "denied={'anonymous_xreadgroup': True, 'producer_xreadgroup': True, 'producer_xrange': True}",
+  "accepted": true
+}

@@ -1,23 +1,32 @@
 {
   "scenario": "E4",
   "hypothesis": "H1: recuperación e idempotencia de eventos",
-  "executedAt": "2026-09-07T01:03:27.163792+00:00",
-  "target_version": 7,
-  "quoting_a_version": 7,
-  "quoting_b_version": 7,
+  "executedAt": "2026-09-27T01:28:56.781057+00:00",
+  "target_version": 51,
+  "quoting_a_version": 51,
+  "quoting_b_version": 51,
   "metrics": {
-    "decision_applied": 12,
-    "events_acked": 12,
-    "events_consumed": 12,
-    "pending_claimed": 3,
-    "pending_created_for_experiment": 3,
-    "pending_recovered": 3,
-    "quotes_degraded_success": 2087,
-    "quotes_normal_success": 1604,
-    "quotes_success": 3691,
+    "decision_applied": 107,
+    "decision_duplicate": 1,
+    "events_acked": 108,
+    "events_consumed": 108,
+    "events_duplicate_received": 1,
+    "integrity_rejected": 6,
+    "integrity_rejected_missing_integrity_fields": 2,
+    "integrity_rejected_signature_mismatch": 2,
+    "integrity_rejected_unknown_key": 2,
+    "integrity_verified": 108,
+    "integrity_verified_key_test-key-2026-09": 107,
+    "integrity_verified_key_test-key-2026-10": 1,
+    "pending_claimed": 5,
+    "pending_created_for_experiment": 5,
+    "pending_recovered": 5,
+    "quotes_degraded_success": 3648,
+    "quotes_normal_success": 14388,
+    "quotes_success": 18036,
     "repository": {
       "decisions": {
-        "APPLIED": 15
+        "APPLIED": 107
       },
       "profiles": 3
     },
@@ -26,8 +35,8 @@
       "materializerPaused": false,
       "profilingAvailable": true
     },
-    "sync_calls_quoting_to_profiling": 1,
-    "sync_quote_failures": 1
+    "sync_calls_quoting_to_profiling": 2,
+    "sync_quote_failures": 2
   },
   "accepted": true
 }

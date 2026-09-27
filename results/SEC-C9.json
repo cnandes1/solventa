@@ -1,0 +1,35 @@
+{
+  "scenario": "SEC-C9",
+  "hypothesis": "AS-4: capa de autorización bajo carga",
+  "executedAt": "2026-09-27T01:30:01.115314+00:00",
+  "total_requests": 3617,
+  "successful_requests": 3617,
+  "failed_requests": 0,
+  "availability": 100.0,
+  "throughput": 602.51,
+  "p50": 12.92,
+  "p95": 18.26,
+  "p99": 21.87,
+  "categories": {
+    "SUCCESS": 3617
+  },
+  "authz": {
+    "checks": 3617,
+    "permits": 3617,
+    "denies": 0,
+    "mean_overhead_ms": 4.909
+  },
+  "overhead_vs_e0": {
+    "baseline": {
+      "executedAt": "2026-09-27T01:28:18.815422+00:00",
+      "throughput": 614.57,
+      "p50": 12.73,
+      "p95": 17.7,
+      "p99": 20.21
+    },
+    "p95_delta_ms": 0.56,
+    "throughput_delta": -12.06
+  },
+  "evidence": "availability=100.0%, p95=18.26ms, authz_mean=4.909ms",
+  "accepted": true
+}

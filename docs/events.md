@@ -76,9 +76,29 @@ El Validator espera A/B/C hasta `VOTING_TIMEOUT_MS`. Dos votos dentro de `VOTING
   "version": "10",
   "riskScore": "40.0",
   "riskLevel": "MEDIUM",
-  "timestamp": "2026-09-06T15:00:00+00:00"
+  "timestamp": "2026-09-06T15:00:00+00:00",
+  "producerId": "profiling",
+  "keyId": "test-key-2026-09",
+  "algorithm": "HMAC-SHA256",
+  "schemaVersion": "1.1",
+  "payloadHash": "hmac-sha256 hex sobre la representación canónica"
 }
 ```
+
+### Integridad (AS-8, `schemaVersion` 1.1)
+
+Los cinco campos de integridad son aditivos: `eventId`, `correlationId` y `version` no cambian de significado.
+
+- `payloadHash` es `HMAC-SHA256(secret[keyId], canonical)` en hexadecimal.
+- `canonical` es el JSON compacto (`sort_keys`, separadores `,` y `:`) de `eventId`, `eventType`, `correlationId`, `customerId`, `version`, `riskScore`, `riskLevel`, `timestamp`, `producerId` y `schemaVersion`, cada uno como el string que viaja en el stream. Productor y consumidor calculan exactamente lo mismo (`profiling/event_signing.py`, `quoting/event_verification.py`).
+- Cotización verifica **antes** de `repository.apply_event()`. Si la verificación falla, hace `XACK`, descarta el evento sin reintento y registra `INTEGRITY_CHECK` con `result=REJECTED` y una de estas razones: `MISSING_INTEGRITY_FIELDS`, `UNSUPPORTED_ALGORITHM`, `UNSUPPORTED_SCHEMA_VERSION`, `UNKNOWN_KEY` o `SIGNATURE_MISMATCH`.
+- Un evento rechazado no se registra en `processed_events`. Así, una copia falsificada no puede hacer que el evento legítimo con el mismo `eventId` se marque como `DUPLICATE`.
+- Rotación: Cotización acepta cualquier `keyId` presente en `KNOWN_KEYS_JSON`, así que los eventos firmados con la llave anterior siguen verificando mientras esa llave esté publicada.
+- Los logs de auditoría registran `eventId`, `customerId`, `producerId`, `keyId` y `reason`. Nunca registran el secreto.
+
+### ACL del stream
+
+`redis-business` carga `redis/users.acl`. Sobre `profile-updated`, `profile_producer` (Profiling) solo tiene `XADD` y `profile_consumer` (Quoting) solo tiene `XGROUP CREATE`, `XREADGROUP`, `XACK` y `XAUTOCLAIM`. El usuario `default` sin contraseña solo tiene `PING`. Cualquier otro intento responde `NOPERM`.
 
 Cada materializador procesa el evento en una transacción SQLite. Un `eventId` repetido produce `DUPLICATE`; una versión menor o igual produce `OLD_VERSION`; solo una versión mayor produce `APPLIED`.
 

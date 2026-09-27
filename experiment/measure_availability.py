@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 
 import json
+import os
 import sys
 import time
 import urllib.error
 import urllib.request
 
 
-def request_http(method, url, body=None, timeout=5):
+IDP_URL = os.environ.get("IDP_URL", "http://localhost:6100").rstrip("/")
+_tokens = {}
+
+
+def request_http(method, url, body=None, timeout=5, headers=None):
     """Executes an HTTP request and returns (code, decoded_json, latency_s)."""
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(
         url,
         data=data,
         method=method,
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", **(headers or {})},
     )
     start = time.time()
     try:
@@ -34,6 +39,17 @@ def request_http(method, url, body=None, timeout=5):
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         latency = time.time() - start
         return None, {"error": str(e)}, latency
+
+
+def owner_headers(customer_id):
+    """Test-only JWT for the customer (the Gateway enforces AS-4 on /quotes)."""
+    if customer_id not in _tokens:
+        code, body, _ = request_http("POST", f"{IDP_URL}/tokens", {
+            "sub": customer_id, "scopes": ["quotes:read", "profiles:read", "profiles:refresh"]})
+        if code != 200:
+            raise RuntimeError(f"cannot issue test token: {body}")
+        _tokens[customer_id] = body["access_token"]
+    return {"Authorization": f"Bearer {_tokens[customer_id]}"}
 
 
 def wait_for(url, condition, total_timeout=45, pause=1):
@@ -84,7 +100,8 @@ def mode_load(base, duration):
         counter += 1
         customer_id = str((counter % 5) + 1)
 
-        code, _, latency = request_http("GET", f"{base}/quotes/{customer_id}", timeout=5)
+        code, _, latency = request_http("GET", f"{base}/quotes/{customer_id}", timeout=5,
+                                        headers=owner_headers(customer_id))
         latencies.append(latency)
         if code == 200:
             successes += 1
@@ -92,7 +109,8 @@ def mode_load(base, duration):
             errors += 1
             print(f"  [{time.strftime('%H:%M:%S')}] GET /quotes/{customer_id} failed (code={code})")
 
-        code, _, latency = request_http("POST", f"{base}/quotes/{customer_id}/request-refresh", timeout=5)
+        code, _, latency = request_http("POST", f"{base}/quotes/{customer_id}/request-refresh", timeout=5,
+                                        headers=owner_headers(customer_id))
         latencies.append(latency)
         if code in (200, 202):
             successes += 1

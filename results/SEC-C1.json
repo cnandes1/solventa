@@ -1,0 +1,10 @@
+{
+  "scenario": "SEC-C1",
+  "hypothesis": "AS-4: request sin token es rechazado",
+  "executedAt": "2026-09-27T01:29:47.199822+00:00",
+  "http_status": 401,
+  "reason": "MISSING_TOKEN",
+  "latency_ms": 1.43,
+  "evidence": "status=401, reason=MISSING_TOKEN",
+  "accepted": true
+}

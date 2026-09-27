@@ -1,0 +1,23 @@
+{
+  "scenario": "SEC-I4",
+  "hypothesis": "AS-8: ACL impide publicar sin rol productor",
+  "executedAt": "2026-09-27T01:30:05.778563+00:00",
+  "responses": {
+    "anonymous_xadd": "NOPERM User default has no permissions to run the 'xadd' command",
+    "consumer_xadd": "NOPERM No permissions to access a key"
+  },
+  "denied": {
+    "anonymous_xadd": true,
+    "consumer_xadd": true
+  },
+  "events_consumed_delta": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "integrity_rejected_delta": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "evidence": "denied={'anonymous_xadd': True, 'consumer_xadd': True}, consumed={'quoting-a': 0, 'quoting-b': 0}",
+  "accepted": true
+}

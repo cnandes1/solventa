@@ -1,0 +1,16 @@
+{
+  "scenario": "SEC-I7",
+  "hypothesis": "AS-8: idempotencia intacta con firma válida",
+  "executedAt": "2026-09-27T01:30:15.515748+00:00",
+  "event_id": "d1404935-e70f-417e-86ec-89de3e36c34d",
+  "duplicates": {
+    "quoting-a": 1,
+    "quoting-b": 1
+  },
+  "integrity_rejected": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "evidence": "decision=DUPLICATE {'quoting-a': 1, 'quoting-b': 1}, rejected={'quoting-a': 0, 'quoting-b': 0}",
+  "accepted": true
+}

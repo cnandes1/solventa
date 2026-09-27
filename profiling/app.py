@@ -14,6 +14,7 @@ import redis
 import requests
 from flask import Flask, jsonify, request
 
+import event_signing
 from circuit_breaker import CircuitBreaker, CircuitOpenError
 from voting import Vote, decide_votes
 
@@ -31,6 +32,9 @@ CB_RECOVERY_TIMEOUT_SECONDS = float(os.environ.get("CB_RECOVERY_TIMEOUT_SECONDS"
 PROFILE_CACHE_MAX_AGE_SECONDS = float(os.environ.get("PROFILE_CACHE_MAX_AGE_SECONDS", "3600"))
 VOTING_TIMEOUT_MS = int(os.environ.get("VOTING_TIMEOUT_MS", "1000"))
 VOTING_TOLERANCE = float(os.environ.get("VOTING_TOLERANCE", "2"))
+# TEST ONLY secrets, injected through docker-compose.yaml.
+HMAC_KEY = os.environ.get("HMAC_KEY", "")
+HMAC_KEY_ID = os.environ.get("HMAC_KEY_ID", "")
 
 STREAM_REFRESH_REQUESTS = "profile-refresh-requests"
 STREAM_CALCULATION_REQUESTS = "profile-calculation-requests"
@@ -296,6 +300,18 @@ def risk_level(score: float) -> str:
     return "HIGH"
 
 
+_signing_lock = threading.Lock()
+_signing_key = {"keyId": HMAC_KEY_ID, "secret": HMAC_KEY}
+
+
+def sign_event(event: dict) -> dict:
+    with _signing_lock:
+        key_id, secret = _signing_key["keyId"], _signing_key["secret"]
+    event_signing.sign_event(event, key_id, secret)
+    metrics.increment("events_signed")
+    return event
+
+
 def publish_profile_updated(customer_id: str, score: float, correlation_id: str) -> dict:
     version = business.incr(f"profile:version:{customer_id}")
     event = {
@@ -308,10 +324,11 @@ def publish_profile_updated(customer_id: str, score: float, correlation_id: str)
         "riskLevel": risk_level(score),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+    sign_event(event)
     publish(STREAM_PROFILE_UPDATED, event)
     business.hset(f"profile:last:{customer_id}", mapping={k: str(v) for k, v in event.items()})
     log_event("PROFILE_UPDATED", eventId=event["eventId"], correlationId=correlation_id,
-              customerId=customer_id, profileVersion=version, result="PUBLISHED")
+              customerId=customer_id, profileVersion=version, keyId=event["keyId"], result="PUBLISHED")
     return event
 
 
@@ -423,6 +440,22 @@ def admin_voting_scenario():
         _voting_scenario.clear()
         _voting_scenario.update({sid: dict(config) for sid, config in body.items()})
     return jsonify({"status": "ok", "scenario": _voting_scenario}), 200
+
+
+@app.post("/admin/integrity/signing-key")
+def admin_signing_key():
+    """Experiment only: rotate the active HMAC key (SEC-I6). Never echoes the secret."""
+    body = request.get_json(silent=True) or {}
+    with _signing_lock:
+        if body.get("reset"):
+            _signing_key.update({"keyId": HMAC_KEY_ID, "secret": HMAC_KEY})
+        elif body.get("keyId") and body.get("secret"):
+            _signing_key.update({"keyId": str(body["keyId"]), "secret": str(body["secret"])})
+        else:
+            return jsonify({"error": "KEY_ID_AND_SECRET_REQUIRED"}), 400
+        key_id = _signing_key["keyId"]
+    log_event("SIGNING_KEY_CHANGED", keyId=key_id, result="RESET" if body.get("reset") else "ROTATED")
+    return jsonify({"status": "ok", "activeKeyId": key_id}), 200
 
 
 @app.get("/circuit-state")

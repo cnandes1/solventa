@@ -1,0 +1,3 @@
+user default on nopass resetkeys resetchannels -@all +ping +hello +auth
+user profile_producer on #ca2b35ce84f1306a6dc75a48f8d706e05889fd677bee8a5ba745561b737926df resetkeys resetchannels ~profile:* ~profile-refresh-requests ~profile-calculation-requests ~profiling-results -@all +ping +hello +auth +select +hgetall +hset +incrby +xadd +xgroup|create +xreadgroup +xack (~profile-updated -@all +xadd)
+user profile_consumer on #184a9d2ffee481a1923e533c3f31ed45b51a802a4f9516100c2f62eaccd9b25e resetkeys resetchannels ~profile-refresh-requests -@all +ping +hello +auth +select +xadd (~profile-updated -@all +xgroup|create +xreadgroup +xack +xautoclaim)

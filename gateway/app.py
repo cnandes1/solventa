@@ -14,6 +14,7 @@ import redis
 import requests
 from flask import Flask, Response, jsonify, request
 
+import security
 from state import InstanceState
 
 app = Flask(__name__)
@@ -243,7 +244,7 @@ def flask_response(upstream: requests.Response, instance_id: str, failover: bool
 def gateway_status():
     with _lock:
         instances = {instance_id: state.snapshot() for instance_id, state in _instances.items()}
-    return jsonify({"instances": instances, "metrics": metrics.snapshot(), "config": {
+    return jsonify({"instances": instances, "metrics": all_metrics(), "config": {
         "healthPingIntervalSeconds": HEALTH_PING_INTERVAL_SECONDS,
         "healthEchoTimeoutSeconds": HEALTH_ECHO_TIMEOUT_SECONDS,
         "healthFailureThreshold": HEALTH_FAILURE_THRESHOLD,
@@ -253,9 +254,13 @@ def gateway_status():
     }}), 200
 
 
+def all_metrics() -> dict:
+    return {**metrics.snapshot(), **security.metrics.snapshot()}
+
+
 @app.get("/metrics")
 def get_metrics():
-    return jsonify(metrics.snapshot()), 200
+    return jsonify(all_metrics()), 200
 
 
 @app.get("/health")
@@ -266,6 +271,9 @@ def health():
 @app.route("/", defaults={"subpath": ""}, methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 @app.route("/<path:subpath>", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 def proxy(subpath):
+    decision = security.authorize(request, subpath)
+    if decision.status != "PERMIT":
+        return jsonify(decision.body), decision.code
     metrics.increment("gateway_requests_total")
     snapshot = request_snapshot()
     primary = choose_active()
