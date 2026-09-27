@@ -3,9 +3,29 @@ Baseline cuantitativo,E0,availability,100% para perfiles precargados,availabilit
 ASR-02: fallback ante Open Finance DOWN,E1,availability + circuit + fallback,"100%, circuito OPEN y fallback >= 3","availability=100.0%, circuit=OPEN, fallback=4",PASS
 ASR-02: timeout ante Open Finance lento,E2,availability + timeout,"100%, circuito OPEN y timeouts >= 3","availability=100.0%, circuit=OPEN, timeouts=3",PASS
 H1: Cotización usa estado local con Perfilamiento DOWN,E3,availability + sync baseline,100% EDA y falla del baseline síncrono,"availability=100.0%, syncFailed=True",PASS
-H1: recuperación e idempotencia de eventos,E4,pending recovery,pendientes recuperados y misma versión A/B,"A=v7, B=v7, recovered=3",PASS
+H1: recuperación e idempotencia de eventos,E4,pending recovery,pendientes recuperados y misma versión A/B,"A=v51, B=v51, recovered=5",PASS
 "H2: detección, retiro y failover de réplica",E5,availability + routing,100% y Quoting B en DOWN,"availability=100.0%, B=DOWN",PASS
 H3: reintegro DOWN-SHADOW-ACTIVE,E6,state transitions,SHADOW observado antes de ACTIVE,"shadow=True, final=ACTIVE",PASS
 H4: consenso excluye outlier,E7,voting outlier,resultado 40 y C marcado como outlier,"score=40.0, outliers=['C']",PASS
-H4: timeout decide con respuesta ausente,E8,voting timeout,"resultado 40, C ausente y duración < 2.5 s","score=40.0, missing=['C'], duration=1022.6ms",PASS
+H4: timeout decide con respuesta ausente,E8,voting timeout,"resultado 40, C ausente y duración < 2.5 s","score=40.0, missing=['C'], duration=1014.2ms",PASS
 H1: vista local sobrevive a Redis Business DOWN,E9,availability,100% desde SQLite con Redis Business DOWN,availability=100.0%,PASS
+AS-4: dueño con scope correcto accede a su cotización,SEC-C0,http status,200 en todas las llamadas,"availability=100.0%, status=['200']",PASS
+AS-4: request sin token es rechazado,SEC-C1,http status + reason,401 MISSING_TOKEN,"status=401, reason=MISSING_TOKEN",PASS
+AS-4: token vencido es rechazado,SEC-C2,http status + reason,401 TOKEN_EXPIRED,"status=401, reason=TOKEN_EXPIRED",PASS
+AS-4: otro cliente no accede sin delegación,SEC-C3,http status + reason,403 OWNERSHIP_MISMATCH,"status=403, reason=OWNERSHIP_MISMATCH",PASS
+AS-4: scope insuficiente es rechazado,SEC-C4,http status + reason,403 INSUFFICIENT_SCOPE,"status=403, reason=INSUFFICIENT_SCOPE",PASS
+AS-4: delegación explícita permite el acceso,SEC-C5,http status + audit,200 y AUTHZ_DECISION PERMIT/DELEGATION,"status=200, audit=PERMIT/DELEGATION",PASS
+AS-4: tenant distinto es rechazado,SEC-C6,http status + reason,403 TENANT_MISMATCH,"status=403, reason=TENANT_MISMATCH",PASS
+AS-4: PDP caído falla cerrado,SEC-C7,http status + reason,503 PDP_UNAVAILABLE y nunca 200,"status=[503], reason=['PDP_UNAVAILABLE']",PASS
+AS-4: firma de token alterada es rechazada,SEC-C8,http status + reason,401 INVALID_SIGNATURE,"status=401, reason=INVALID_SIGNATURE",PASS
+AS-4: capa de autorización bajo carga,SEC-C9,availability + authz overhead,100% con autorización activa,"availability=100.0%, p95=18.26ms, authz_mean=4.909ms",PASS
+AS-8: evento firmado se aplica,SEC-I0,integrity + decision,verificado y APPLIED en A/B,"keyId=test-key-2026-09, verified={'quoting-a': 1, 'quoting-b': 1}, decision=APPLIED",PASS
+AS-8: payload alterado es rechazado,SEC-I1,integrity rejection,SIGNATURE_MISMATCH en A/B y vista sin cambios,"reason=SIGNATURE_MISMATCH, rejected={'quoting-a': 1, 'quoting-b': 1}, premiumUnchanged=True",PASS
+AS-8: evento sin firma es rechazado,SEC-I2,integrity rejection,MISSING_INTEGRITY_FIELDS en A/B y vista sin cambios,"reason=MISSING_INTEGRITY_FIELDS, rejected={'quoting-a': 1, 'quoting-b': 1}, premiumUnchanged=True",PASS
+AS-8: keyId desconocido es rechazado,SEC-I3,integrity rejection,UNKNOWN_KEY en A/B y vista sin cambios,"reason=UNKNOWN_KEY, rejected={'quoting-a': 1, 'quoting-b': 1}, premiumUnchanged=True",PASS
+AS-8: ACL impide publicar sin rol productor,SEC-I4,redis acl,XADD sin rol productor responde NOPERM,"denied={'anonymous_xadd': True, 'consumer_xadd': True}, consumed={'quoting-a': 0, 'quoting-b': 0}",PASS
+AS-8: ACL impide consumir sin rol consumidor,SEC-I5,redis acl,lectura sin rol consumidor responde NOPERM,"denied={'anonymous_xreadgroup': True, 'producer_xreadgroup': True, 'producer_xrange': True}",PASS
+AS-8: rotación de llave sin romper eventos previos,SEC-I6,key rotation,"llave nueva y anterior verifican, 0 rechazos","quoting-a verified={'test-key-2026-09': 1, 'test-key-2026-10': 1}, rejected={'quoting-a': 0, 'quoting-b': 0}",PASS
+AS-8: idempotencia intacta con firma válida,SEC-I7,idempotency,"reenvío firmado produce DUPLICATE, 0 rechazos","decision=DUPLICATE {'quoting-a': 1, 'quoting-b': 1}, rejected={'quoting-a': 0, 'quoting-b': 0}",PASS
+AS-8: verificación de firma bajo carga,SEC-I8,availability + integrity,"100%, eventos verificados y 0 rechazos","availability=100.0%, signed=24, verified={'quoting-a': 24, 'quoting-b': 24}, rejected={'quoting-a': 0, 'quoting-b': 0}, p95=18.15ms",PASS
+AS-8: auditoría de rechazos sin material de llave,SEC-I9,audit,"3 causas de rechazo auditadas, sin secretos en logs","reasons=['MISSING_INTEGRITY_FIELDS', 'SIGNATURE_MISMATCH', 'UNKNOWN_KEY'], records=6, leaks=0",PASS

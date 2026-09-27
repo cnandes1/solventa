@@ -1,11 +1,31 @@
 scenario,total_requests,successful_requests,failed_requests,availability,throughput,p50,p95,p99,hypothesis,accepted
-E0,3207,3207,0,100.0,533.68,14.27,23.31,29.67,Baseline cuantitativo,True
-E1,3983,3983,0,100.0,663.02,11.68,16.82,20.76,ASR-02: fallback ante Open Finance DOWN,True
-E2,4312,4312,0,100.0,717.88,10.79,16.14,18.78,ASR-02: timeout ante Open Finance lento,True
-E3,4175,4175,0,100.0,694.55,10.91,16.95,24.88,H1: Cotización usa estado local con Perfilamiento DOWN,True
+E0,3690,3690,0,100.0,614.57,12.73,17.7,20.21,Baseline cuantitativo,True
+E1,3630,3630,0,100.0,604.25,12.88,18.32,21.19,ASR-02: fallback ante Open Finance DOWN,True
+E2,3661,3661,0,100.0,609.56,12.8,17.91,20.39,ASR-02: timeout ante Open Finance lento,True
+E3,3668,3668,0,100.0,610.44,12.87,17.72,20.14,H1: Cotización usa estado local con Perfilamiento DOWN,True
 E4,,,,,,,,,H1: recuperación e idempotencia de eventos,True
-E5,4949,4949,0,100.0,618.12,12.47,18.61,23.35,"H2: detección, retiro y failover de réplica",True
+E5,3627,3627,0,100.0,452.94,12.95,17.95,21.2,"H2: detección, retiro y failover de réplica",True
 E6,,,,,,,,,H3: reintegro DOWN-SHADOW-ACTIVE,True
 E7,,,,,,,,,H4: consenso excluye outlier,True
 E8,,,,,,,,,H4: timeout decide con respuesta ausente,True
-E9,3531,3531,0,100.0,587.17,13.12,19.59,25.38,H1: vista local sobrevive a Redis Business DOWN,True
+E9,3597,3597,0,100.0,598.93,13.14,18.34,21.71,H1: vista local sobrevive a Redis Business DOWN,True
+SEC-C0,,,,100.0,,,,,AS-4: dueño con scope correcto accede a su cotización,True
+SEC-C1,,,,,,,,,AS-4: request sin token es rechazado,True
+SEC-C2,,,,,,,,,AS-4: token vencido es rechazado,True
+SEC-C3,,,,,,,,,AS-4: otro cliente no accede sin delegación,True
+SEC-C4,,,,,,,,,AS-4: scope insuficiente es rechazado,True
+SEC-C5,,,,,,,,,AS-4: delegación explícita permite el acceso,True
+SEC-C6,,,,,,,,,AS-4: tenant distinto es rechazado,True
+SEC-C7,,,,,,,,,AS-4: PDP caído falla cerrado,True
+SEC-C8,,,,,,,,,AS-4: firma de token alterada es rechazada,True
+SEC-C9,3617,3617,0,100.0,602.51,12.92,18.26,21.87,AS-4: capa de autorización bajo carga,True
+SEC-I0,,,,,,,,,AS-8: evento firmado se aplica,True
+SEC-I1,,,,,,,,,AS-8: payload alterado es rechazado,True
+SEC-I2,,,,,,,,,AS-8: evento sin firma es rechazado,True
+SEC-I3,,,,,,,,,AS-8: keyId desconocido es rechazado,True
+SEC-I4,,,,,,,,,AS-8: ACL impide publicar sin rol productor,True
+SEC-I5,,,,,,,,,AS-8: ACL impide consumir sin rol consumidor,True
+SEC-I6,,,,,,,,,AS-8: rotación de llave sin romper eventos previos,True
+SEC-I7,,,,,,,,,AS-8: idempotencia intacta con firma válida,True
+SEC-I8,3627,3627,0,100.0,603.85,12.94,18.15,21.12,AS-8: verificación de firma bajo carga,True
+SEC-I9,,,,,,,,,AS-8: auditoría de rechazos sin material de llave,True

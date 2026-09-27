@@ -1,21 +1,21 @@
 {
   "scenario": "E5",
   "hypothesis": "H2: detección, retiro y failover de réplica",
-  "executedAt": "2026-09-07T01:04:16.264986+00:00",
-  "total_requests": 4949,
-  "successful_requests": 4949,
+  "executedAt": "2026-09-27T01:29:12.277589+00:00",
+  "total_requests": 3627,
+  "successful_requests": 3627,
   "failed_requests": 0,
   "availability": 100.0,
-  "throughput": 618.12,
-  "p50": 12.47,
-  "p95": 18.61,
-  "p99": 23.35,
+  "throughput": 452.94,
+  "p50": 12.95,
+  "p95": 17.95,
+  "p99": 21.2,
   "categories": {
-    "SUCCESS": 4949
+    "SUCCESS": 3627
   },
   "gateway_state": {
-    "detectionTimeMs": 3.6,
-    "failures": 11,
+    "detectionTimeMs": 1595.9,
+    "failures": 12,
     "healthSuccesses": 0,
     "lastError": "HealthEcho timeout",
     "shadowDurationMs": null,

@@ -125,6 +125,12 @@ def compose(*args: str) -> None:
     subprocess.run(["docker", "compose", *args], cwd=ROOT, check=True)
 
 
+def start_healthy(service: str) -> None:
+    """Start a stopped service and block until its Docker healthcheck passes, so the
+    next scenario never hits a container that is still booting."""
+    compose("up", "-d", "--wait", "--no-recreate", "--no-deps", service)
+
+
 def issue_token(sub: str, tenant_id: str = DEFAULT_TENANT_ID, scopes: list[str] | None = None,
                 exp_delta: int = 3600) -> str:
     code, body, _ = http("POST", f"{URLS['idp']}/tokens", {
@@ -328,7 +334,7 @@ def execute(scenario: str) -> dict:
             code, _, _ = http("GET", f"{URLS['gateway']}/sync/quotes/C001", timeout=3,
                               headers=auth_headers("C001"))
         finally:
-            compose("start", "profiling")
+            start_healthy("profiling")
         result["sync_baseline_failed"] = code != 200
         result["accepted"] = result["availability"] == 100.0 and result["sync_baseline_failed"]
         return result
@@ -360,7 +366,7 @@ def execute(scenario: str) -> dict:
             result["accepted"] = result["availability"] == 100.0 and status["state"] == "DOWN"
             return result
         finally:
-            compose("start", "quoting-b")
+            start_healthy("quoting-b")
     if scenario == "E6":
         preload()
         compose("stop", "quoting-b")
@@ -407,7 +413,7 @@ def execute(scenario: str) -> dict:
             time.sleep(2)
             result = run_load(6)
         finally:
-            compose("start", "redis-business")
+            start_healthy("redis-business")
         result["accepted"] = result["availability"] == 100.0
         return result
     raise ValueError(scenario)

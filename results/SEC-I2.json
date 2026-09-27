@@ -1,0 +1,39 @@
+{
+  "scenario": "SEC-I2",
+  "hypothesis": "AS-8: evento sin firma es rechazado",
+  "executedAt": "2026-09-27T01:30:02.228664+00:00",
+  "forged_event_id": "4d386cae-68c1-4ecf-a560-f2d29a7b5193",
+  "forged_version": "1061",
+  "rejected": {
+    "quoting-a": 1,
+    "quoting-b": 1
+  },
+  "applied_delta": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "views_before": {
+    "quoting-a": {
+      "version": 61,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 61,
+      "risk_score": 70.0
+    }
+  },
+  "views_after": {
+    "quoting-a": {
+      "version": 61,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 61,
+      "risk_score": 70.0
+    }
+  },
+  "premium_before": 345.0,
+  "premium_after": 345.0,
+  "evidence": "reason=MISSING_INTEGRITY_FIELDS, rejected={'quoting-a': 1, 'quoting-b': 1}, premiumUnchanged=True",
+  "accepted": true
+}

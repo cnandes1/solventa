@@ -1,0 +1,34 @@
+{
+  "scenario": "SEC-I6",
+  "hypothesis": "AS-8: rotación de llave sin romper eventos previos",
+  "executedAt": "2026-09-27T01:30:15.093608+00:00",
+  "previous_key_id": "test-key-2026-09",
+  "new_key_id": "test-key-2026-10",
+  "rotated_event_key_id": "test-key-2026-10",
+  "verified_by_key": {
+    "quoting-a": {
+      "test-key-2026-09": 1,
+      "test-key-2026-10": 1
+    },
+    "quoting-b": {
+      "test-key-2026-09": 1,
+      "test-key-2026-10": 1
+    }
+  },
+  "integrity_rejected": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "views": {
+    "quoting-a": {
+      "version": 65,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 65,
+      "risk_score": 70.0
+    }
+  },
+  "evidence": "quoting-a verified={'test-key-2026-09': 1, 'test-key-2026-10': 1}, rejected={'quoting-a': 0, 'quoting-b': 0}",
+  "accepted": true
+}

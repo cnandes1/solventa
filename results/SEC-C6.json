@@ -1,0 +1,10 @@
+{
+  "scenario": "SEC-C6",
+  "hypothesis": "AS-4: tenant distinto es rechazado",
+  "executedAt": "2026-09-27T01:29:47.676324+00:00",
+  "http_status": 403,
+  "reason": "TENANT_MISMATCH",
+  "latency_ms": 2.71,
+  "evidence": "status=403, reason=TENANT_MISMATCH",
+  "accepted": true
+}

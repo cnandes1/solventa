@@ -248,7 +248,7 @@ def sec_c7() -> dict:
     try:
         samples = [call_with_token("GET", gateway_url("C001"), token)[:2] for _ in range(5)]
     finally:
-        core.compose("start", "pdp")
+        core.start_healthy("pdp")
     core.wait_until("PDP healthy", lambda: core.http("GET", f"{URLS['pdp']}/health")[0] == 200, timeout=30)
     codes = [code for code, _ in samples]
     reasons = sorted({body.get("reason") for _, body in samples})

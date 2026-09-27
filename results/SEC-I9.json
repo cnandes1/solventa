@@ -1,0 +1,76 @@
+{
+  "scenario": "SEC-I9",
+  "hypothesis": "AS-8: auditoría de rechazos sin material de llave",
+  "executedAt": "2026-09-27T01:30:22.519976+00:00",
+  "forged_events": {
+    "SIGNATURE_MISMATCH": "748b088c-8306-48f4-a2e8-002cc0883af6",
+    "MISSING_INTEGRITY_FIELDS": "744a7387-e22d-4982-9434-365c6592a829",
+    "UNKNOWN_KEY": "21733d92-a9c2-4306-9e8a-8d456c3b09c0"
+  },
+  "audit_records": [
+    {
+      "timestamp": "2026-09-27T01:30:22.076292+00:00",
+      "service": "quoting",
+      "instanceId": "quoting-b",
+      "eventId": "748b088c-8306-48f4-a2e8-002cc0883af6",
+      "customerId": "C001",
+      "producerId": "profiling",
+      "keyId": "test-key-2026-09",
+      "reason": "SIGNATURE_MISMATCH"
+    },
+    {
+      "timestamp": "2026-09-27T01:30:22.149109+00:00",
+      "service": "quoting",
+      "instanceId": "quoting-b",
+      "eventId": "744a7387-e22d-4982-9434-365c6592a829",
+      "customerId": "C001",
+      "producerId": null,
+      "keyId": null,
+      "reason": "MISSING_INTEGRITY_FIELDS"
+    },
+    {
+      "timestamp": "2026-09-27T01:30:22.224643+00:00",
+      "service": "quoting",
+      "instanceId": "quoting-b",
+      "eventId": "21733d92-a9c2-4306-9e8a-8d456c3b09c0",
+      "customerId": "C001",
+      "producerId": "profiling",
+      "keyId": "test-key-rogue",
+      "reason": "UNKNOWN_KEY"
+    },
+    {
+      "timestamp": "2026-09-27T01:30:22.076291+00:00",
+      "service": "quoting",
+      "instanceId": "quoting-a",
+      "eventId": "748b088c-8306-48f4-a2e8-002cc0883af6",
+      "customerId": "C001",
+      "producerId": "profiling",
+      "keyId": "test-key-2026-09",
+      "reason": "SIGNATURE_MISMATCH"
+    },
+    {
+      "timestamp": "2026-09-27T01:30:22.149092+00:00",
+      "service": "quoting",
+      "instanceId": "quoting-a",
+      "eventId": "744a7387-e22d-4982-9434-365c6592a829",
+      "customerId": "C001",
+      "producerId": null,
+      "keyId": null,
+      "reason": "MISSING_INTEGRITY_FIELDS"
+    },
+    {
+      "timestamp": "2026-09-27T01:30:22.224638+00:00",
+      "service": "quoting",
+      "instanceId": "quoting-a",
+      "eventId": "21733d92-a9c2-4306-9e8a-8d456c3b09c0",
+      "customerId": "C001",
+      "producerId": "profiling",
+      "keyId": "test-key-rogue",
+      "reason": "UNKNOWN_KEY"
+    }
+  ],
+  "log_lines_scanned": 3597,
+  "secret_material_in_logs": 0,
+  "evidence": "reasons=['MISSING_INTEGRITY_FIELDS', 'SIGNATURE_MISMATCH', 'UNKNOWN_KEY'], records=6, leaks=0",
+  "accepted": true
+}

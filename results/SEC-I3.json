@@ -1,0 +1,39 @@
+{
+  "scenario": "SEC-I3",
+  "hypothesis": "AS-8: keyId desconocido es rechazado",
+  "executedAt": "2026-09-27T01:30:02.617652+00:00",
+  "forged_event_id": "f92ef040-b3a5-4c2c-8989-1d7375ebe00c",
+  "forged_version": "1062",
+  "rejected": {
+    "quoting-a": 1,
+    "quoting-b": 1
+  },
+  "applied_delta": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "views_before": {
+    "quoting-a": {
+      "version": 62,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 62,
+      "risk_score": 70.0
+    }
+  },
+  "views_after": {
+    "quoting-a": {
+      "version": 62,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 62,
+      "risk_score": 70.0
+    }
+  },
+  "premium_before": 345.0,
+  "premium_after": 345.0,
+  "evidence": "reason=UNKNOWN_KEY, rejected={'quoting-a': 1, 'quoting-b': 1}, premiumUnchanged=True",
+  "accepted": true
+}

@@ -1,0 +1,10 @@
+{
+  "scenario": "SEC-C4",
+  "hypothesis": "AS-4: scope insuficiente es rechazado",
+  "executedAt": "2026-09-27T01:29:47.214726+00:00",
+  "http_status": 403,
+  "reason": "INSUFFICIENT_SCOPE",
+  "latency_ms": 1.93,
+  "evidence": "status=403, reason=INSUFFICIENT_SCOPE",
+  "accepted": true
+}

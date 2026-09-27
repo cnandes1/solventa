@@ -1,0 +1,10 @@
+{
+  "scenario": "SEC-C3",
+  "hypothesis": "AS-4: otro cliente no accede sin delegación",
+  "executedAt": "2026-09-27T01:29:47.209842+00:00",
+  "http_status": 403,
+  "reason": "OWNERSHIP_MISMATCH",
+  "latency_ms": 2.36,
+  "evidence": "status=403, reason=OWNERSHIP_MISMATCH",
+  "accepted": true
+}

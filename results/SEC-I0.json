@@ -1,0 +1,28 @@
+{
+  "scenario": "SEC-I0",
+  "hypothesis": "AS-8: evento firmado se aplica",
+  "executedAt": "2026-09-27T01:30:01.392679+00:00",
+  "event_version": 59,
+  "key_id": "test-key-2026-09",
+  "payload_hash_present": true,
+  "integrity_verified": {
+    "quoting-a": 1,
+    "quoting-b": 1
+  },
+  "integrity_rejected": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "views": {
+    "quoting-a": {
+      "version": 59,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 59,
+      "risk_score": 70.0
+    }
+  },
+  "evidence": "keyId=test-key-2026-09, verified={'quoting-a': 1, 'quoting-b': 1}, decision=APPLIED",
+  "accepted": true
+}

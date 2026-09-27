@@ -1,0 +1,39 @@
+{
+  "scenario": "SEC-I1",
+  "hypothesis": "AS-8: payload alterado es rechazado",
+  "executedAt": "2026-09-27T01:30:01.833092+00:00",
+  "forged_event_id": "e26454de-5a02-4ed9-9c5c-9274d4344ca2",
+  "forged_version": "1060",
+  "rejected": {
+    "quoting-a": 1,
+    "quoting-b": 1
+  },
+  "applied_delta": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "views_before": {
+    "quoting-a": {
+      "version": 60,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 60,
+      "risk_score": 70.0
+    }
+  },
+  "views_after": {
+    "quoting-a": {
+      "version": 60,
+      "risk_score": 70.0
+    },
+    "quoting-b": {
+      "version": 60,
+      "risk_score": 70.0
+    }
+  },
+  "premium_before": 345.0,
+  "premium_after": 345.0,
+  "evidence": "reason=SIGNATURE_MISMATCH, rejected={'quoting-a': 1, 'quoting-b': 1}, premiumUnchanged=True",
+  "accepted": true
+}

@@ -1,0 +1,10 @@
+{
+  "scenario": "SEC-C2",
+  "hypothesis": "AS-4: token vencido es rechazado",
+  "executedAt": "2026-09-27T01:29:47.204384+00:00",
+  "http_status": 401,
+  "reason": "TOKEN_EXPIRED",
+  "latency_ms": 1.33,
+  "evidence": "status=401, reason=TOKEN_EXPIRED",
+  "accepted": true
+}

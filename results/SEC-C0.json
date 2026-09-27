@@ -1,0 +1,9 @@
+{
+  "scenario": "SEC-C0",
+  "hypothesis": "AS-4: dueño con scope correcto accede a su cotización",
+  "executedAt": "2026-09-27T01:29:47.189802+00:00",
+  "requests": 20,
+  "availability": 100.0,
+  "evidence": "availability=100.0%, status=['200']",
+  "accepted": true
+}

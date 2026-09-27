@@ -1,0 +1,38 @@
+{
+  "scenario": "SEC-I8",
+  "hypothesis": "AS-8: verificación de firma bajo carga",
+  "executedAt": "2026-09-27T01:30:21.726213+00:00",
+  "total_requests": 3627,
+  "successful_requests": 3627,
+  "failed_requests": 0,
+  "availability": 100.0,
+  "throughput": 603.85,
+  "p50": 12.94,
+  "p95": 18.15,
+  "p99": 21.12,
+  "categories": {
+    "SUCCESS": 3627
+  },
+  "events_published": 24,
+  "integrity_verified": {
+    "quoting-a": 24,
+    "quoting-b": 24
+  },
+  "integrity_rejected": {
+    "quoting-a": 0,
+    "quoting-b": 0
+  },
+  "overhead_vs_e0": {
+    "baseline": {
+      "executedAt": "2026-09-27T01:28:18.815422+00:00",
+      "throughput": 614.57,
+      "p50": 12.73,
+      "p95": 17.7,
+      "p99": 20.21
+    },
+    "p95_delta_ms": 0.45,
+    "throughput_delta": -10.72
+  },
+  "evidence": "availability=100.0%, signed=24, verified={'quoting-a': 24, 'quoting-b': 24}, rejected={'quoting-a': 0, 'quoting-b': 0}, p95=18.15ms",
+  "accepted": true
+}

@@ -1,0 +1,24 @@
+{
+  "scenario": "SEC-C5",
+  "hypothesis": "AS-4: delegación explícita permite el acceso",
+  "executedAt": "2026-09-27T01:29:47.669142+00:00",
+  "http_status": 200,
+  "premium": 345.0,
+  "audit_record": {
+    "timestamp": "2026-09-27T01:29:47.417718+00:00",
+    "service": "gateway",
+    "event": "AUTHZ_DECISION",
+    "correlationId": "139aee20-fc4a-48fc-9c56-f2226d77fe3c",
+    "decision": "PERMIT",
+    "reason": "DELEGATION",
+    "httpStatus": 200,
+    "method": "GET",
+    "path": "/quotes/C001",
+    "subject": "C002",
+    "subjectCustomerId": "C002",
+    "ownerCustomerId": "C001",
+    "action": "quotes:read"
+  },
+  "evidence": "status=200, audit=PERMIT/DELEGATION",
+  "accepted": true
+}

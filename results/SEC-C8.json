@@ -1,0 +1,10 @@
+{
+  "scenario": "SEC-C8",
+  "hypothesis": "AS-4: firma de token alterada es rechazada",
+  "executedAt": "2026-09-27T01:29:54.903751+00:00",
+  "http_status": 401,
+  "reason": "INVALID_SIGNATURE",
+  "latency_ms": 1.45,
+  "evidence": "status=401, reason=INVALID_SIGNATURE",
+  "accepted": true
+}
