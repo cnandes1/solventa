@@ -170,10 +170,6 @@ Cada ejecución guarda `results/E<n>.json` y actualiza `results/summary.csv` y `
 
 Segundo experimento sobre el mismo montaje, centrado en las historias de seguridad **AS-4 [Confidencialidad]** y **AS-8 [Integridad]**. Sigue el mismo método que E0-E9: hipótesis, montaje reproducible, escenarios ejecutables, evidencia en `results/*.json` y un guion de video. La lógica nueva es aditiva: E0-E9 siguen en verde con la capa de seguridad activa.
 
-- Plan: [docs/security-experiment-plan.md](docs/security-experiment-plan.md)
-- Guion de video y bitácora de validación paso a paso: [docs/video-demo-security.md](docs/video-demo-security.md)
-- ACL de Redis: [redis/README.md](redis/README.md)
-
 ### Hipótesis del experimento
 
 - **H-AS4, confidencialidad.** El Gateway, apoyado en un IdP de prueba y en un PDP externo, impide que un sujeto acceda a perfiles o cotizaciones de otro cliente en tres casos: si no tiene una identidad válida, si le falta el `scope` necesario o si no cumple `subject.customerId == owner.customerId` y tampoco tiene una delegación explícita. Si el PDP no responde, el Gateway **deniega** (falla cerrado).
